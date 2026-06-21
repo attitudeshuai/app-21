@@ -102,4 +102,81 @@ public static class AppConstants
         /// </summary>
         public const string User = "User";
     }
+
+    /// <summary>
+    /// 系统日志级别
+    /// </summary>
+    public static class LogLevels
+    {
+        /// <summary>
+        /// 信息
+        /// </summary>
+        public const string Information = "Information";
+
+        /// <summary>
+        /// 警告
+        /// </summary>
+        public const string Warning = "Warning";
+
+        /// <summary>
+        /// 错误
+        /// </summary>
+        public const string Error = "Error";
+
+        /// <summary>
+        /// 关键
+        /// </summary>
+        public const string Critical = "Critical";
+    }
+
+    /// <summary>
+    /// 系统事件类型
+    /// </summary>
+    public static class EventTypes
+    {
+        /// <summary>
+        /// 用户登录
+        /// </summary>
+        public const string UserLogin = "UserLogin";
+
+        /// <summary>
+        /// 用户登录失败
+        /// </summary>
+        public const string UserLoginFailed = "UserLoginFailed";
+
+        /// <summary>
+        /// 用户注册
+        /// </summary>
+        public const string UserRegistered = "UserRegistered";
+
+        /// <summary>
+        /// 用户资料更新
+        /// </summary>
+        public const string UserProfileUpdated = "UserProfileUpdated";
+
+        /// <summary>
+        /// 用户被锁定
+        /// </summary>
+        public const string UserLocked = "UserLocked";
+
+        /// <summary>
+        /// 用户被解锁
+        /// </summary>
+        public const string UserUnlocked = "UserUnlocked";
+
+        /// <summary>
+        /// 用户列表查询
+        /// </summary>
+        public const string UserListQueried = "UserListQueried";
+
+        /// <summary>
+        /// 系统日志查询
+        /// </summary>
+        public const string SystemLogQueried = "SystemLogQueried";
+
+        /// <summary>
+        /// 权限不足
+        /// </summary>
+        public const string PermissionDenied = "PermissionDenied";
+    }
 }

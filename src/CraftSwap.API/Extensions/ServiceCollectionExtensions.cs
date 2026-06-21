@@ -197,6 +197,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISwapRequestRepository, SwapRequestRepository>();
         services.AddScoped<ISwapReviewRepository, SwapReviewRepository>();
         services.AddScoped<IProjectShowcaseRepository, ProjectShowcaseRepository>();
+        services.AddScoped<ISystemLogRepository, SystemLogRepository>();
     }
 
     /// <summary>
@@ -214,5 +215,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISwapReviewService, SwapReviewService>();
         services.AddScoped<IProjectShowcaseService, ProjectShowcaseService>();
         services.AddScoped<IStatsService, StatsService>();
+        services.AddScoped<IPermissionService, PermissionService>();
+        services.AddScoped<ISystemLogService, SystemLogService>();
+        services.AddScoped<IAdminService, AdminService>();
     }
 }

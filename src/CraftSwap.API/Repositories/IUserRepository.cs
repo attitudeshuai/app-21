@@ -1,3 +1,4 @@
+using CraftSwap.DTOs.Admin;
 using CraftSwap.Entities;
 
 namespace CraftSwap.Repositories;
@@ -35,4 +36,25 @@ public interface IUserRepository : IRepository<User>
     /// <param name="endDate">结束日期</param>
     /// <returns>用户数量</returns>
     Task<int> GetCountByDateRangeAsync(DateTime startDate, DateTime endDate);
+
+    /// <summary>
+    /// 分页查询用户列表（管理员用）
+    /// </summary>
+    /// <param name="parameters">查询参数</param>
+    /// <returns>分页用户列表和总数</returns>
+    Task<(List<User> Users, int TotalCount)> GetPagedUsersAsync(UserQueryParameters parameters);
+
+    /// <summary>
+    /// 检查用户是否为管理员
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>是否为管理员</returns>
+    Task<bool> IsUserAdminAsync(int userId);
+
+    /// <summary>
+    /// 检查账户是否被锁定
+    /// </summary>
+    /// <param name="userId">用户ID</param>
+    /// <returns>是否被锁定</returns>
+    Task<bool> IsUserLockedAsync(int userId);
 }

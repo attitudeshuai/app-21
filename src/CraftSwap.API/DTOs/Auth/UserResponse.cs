@@ -44,4 +44,9 @@ public class UserResponse
     /// 最后更新时间
     /// </summary>
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>
+    /// 角色
+    /// </summary>
+    public string Role { get; set; } = string.Empty;
 }

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using CraftSwap.Common;
 
 namespace CraftSwap.Entities;
 
@@ -41,6 +42,29 @@ public class User
     /// </summary>
     [MaxLength(512)]
     public string? Avatar { get; set; }
+
+    /// <summary>
+    /// 用户角色
+    /// </summary>
+    [Required]
+    [MaxLength(20)]
+    public string Role { get; set; } = AppConstants.UserRoles.User;
+
+    /// <summary>
+    /// 是否已锁定
+    /// </summary>
+    public bool IsLocked { get; set; }
+
+    /// <summary>
+    /// 锁定结束时间
+    /// </summary>
+    public DateTime? LockEndTime { get; set; }
+
+    /// <summary>
+    /// 锁定原因
+    /// </summary>
+    [MaxLength(500)]
+    public string? LockReason { get; set; }
 
     /// <summary>
     /// 创建时间

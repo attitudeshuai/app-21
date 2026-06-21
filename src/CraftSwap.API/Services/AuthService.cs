@@ -1,4 +1,5 @@
 using AutoMapper;
+using CraftSwap.Common;
 using CraftSwap.DTOs.Auth;
 using CraftSwap.DTOs.Common;
 using CraftSwap.Entities;
@@ -19,6 +20,7 @@ public class AuthService : IAuthService
     private readonly ITokenValidatorService _tokenValidatorService;
     private readonly ITokenGeneratorService _tokenGeneratorService;
     private readonly IUserSessionService _userSessionService;
+    private readonly ISystemLogService _systemLogService;
 
     /// <summary>
     /// 构造函数
@@ -29,13 +31,15 @@ public class AuthService : IAuthService
     /// <param name="tokenValidatorService">令牌校验服务</param>
     /// <param name="tokenGeneratorService">令牌生成服务</param>
     /// <param name="userSessionService">用户会话服务</param>
+    /// <param name="systemLogService">系统日志服务</param>
     public AuthService(
         IUserRepository userRepository,
         IMapper mapper,
         IHttpContextAccessor httpContextAccessor,
         ITokenValidatorService tokenValidatorService,
         ITokenGeneratorService tokenGeneratorService,
-        IUserSessionService userSessionService)
+        IUserSessionService userSessionService,
+        ISystemLogService systemLogService)
     {
         _userRepository = userRepository;
         _mapper = mapper;
@@ -43,6 +47,7 @@ public class AuthService : IAuthService
         _tokenValidatorService = tokenValidatorService;
         _tokenGeneratorService = tokenGeneratorService;
         _userSessionService = userSessionService;
+        _systemLogService = systemLogService;
     }
 
     /// <summary>
@@ -89,6 +94,17 @@ public class AuthService : IAuthService
             ExpiresIn = tokenResult.ExpiresIn
         };
 
+        var ipAddress = GetClientIpAddress();
+        var userAgent = _httpContextAccessor.HttpContext?.Request.Headers["User-Agent"].ToString();
+
+        await _systemLogService.LogInformationAsync(
+            AppConstants.EventTypes.UserRegistered,
+            $"用户 {createdUser.Username} 注册成功",
+            createdUser.Id,
+            createdUser.Username,
+            ipAddress: ipAddress,
+            userAgent: userAgent);
+
         return ApiResponse<AuthResponse>.Success(authResponse, "注册成功");
     }
 
@@ -99,6 +115,9 @@ public class AuthService : IAuthService
     /// <returns>认证响应</returns>
     public async Task<ApiResponse<AuthResponse>> LoginAsync(LoginRequest request)
     {
+        var ipAddress = GetClientIpAddress();
+        var userAgent = _httpContextAccessor.HttpContext?.Request.Headers["User-Agent"].ToString();
+
         User? user = null;
 
         if (request.EmailOrUsername.Contains('@'))
@@ -112,13 +131,44 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
+            await _systemLogService.LogWarningAsync(
+                AppConstants.EventTypes.UserLoginFailed,
+                $"登录失败：用户 {request.EmailOrUsername} 不存在",
+                ipAddress: ipAddress,
+                userAgent: userAgent);
+
             return ApiResponse<AuthResponse>.Fail("用户名或密码错误");
         }
 
         var isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
         if (!isPasswordValid)
         {
+            await _systemLogService.LogWarningAsync(
+                AppConstants.EventTypes.UserLoginFailed,
+                $"登录失败：用户 {user.Username} 密码错误",
+                user.Id,
+                user.Username,
+                ipAddress: ipAddress,
+                userAgent: userAgent);
+
             return ApiResponse<AuthResponse>.Fail("用户名或密码错误");
+        }
+
+        if (await _userRepository.IsUserLockedAsync(user.Id))
+        {
+            var lockMessage = user.LockEndTime.HasValue
+                ? $"账户已被锁定，解锁时间：{user.LockEndTime.Value:yyyy-MM-dd HH:mm:ss}，原因：{user.LockReason}"
+                : $"账户已被永久锁定，原因：{user.LockReason}";
+
+            await _systemLogService.LogWarningAsync(
+                AppConstants.EventTypes.UserLoginFailed,
+                $"登录失败：用户 {user.Username} 账户被锁定",
+                user.Id,
+                user.Username,
+                ipAddress: ipAddress,
+                userAgent: userAgent);
+
+            return ApiResponse<AuthResponse>.Fail(lockMessage, 403);
         }
 
         var tokenResult = _tokenGeneratorService.GenerateTokenPair(user);
@@ -138,6 +188,14 @@ public class AuthService : IAuthService
             RefreshToken = tokenResult.RefreshToken,
             ExpiresIn = tokenResult.ExpiresIn
         };
+
+        await _systemLogService.LogInformationAsync(
+            AppConstants.EventTypes.UserLogin,
+            $"用户 {user.Username} 登录成功",
+            user.Id,
+            user.Username,
+            ipAddress: ipAddress,
+            userAgent: userAgent);
 
         return ApiResponse<AuthResponse>.Success(authResponse, "登录成功");
     }
@@ -284,5 +342,23 @@ public class AuthService : IAuthService
             return userId;
         }
         return null;
+    }
+
+    /// <summary>
+    /// 获取客户端IP地址
+    /// </summary>
+    /// <returns>IP地址</returns>
+    private string? GetClientIpAddress()
+    {
+        var context = _httpContextAccessor.HttpContext;
+        if (context == null) return null;
+
+        var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(forwardedFor))
+        {
+            return forwardedFor.Split(',').FirstOrDefault()?.Trim();
+        }
+
+        return context.Connection.RemoteIpAddress?.ToString();
     }
 }

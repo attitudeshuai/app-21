@@ -35,7 +35,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Nickname, opt => opt.MapFrom(src => src.Username))
             .ForMember(dest => dest.AvatarUrl, opt => opt.MapFrom(src => src.Avatar))
             .ForMember(dest => dest.Bio, opt => opt.Ignore())
-            .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt));
+            .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt))
+            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role));
 
         CreateMap<RegisterRequest, User>()
             .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())

@@ -40,6 +40,11 @@ public class AppDbContext : DbContext
     public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     /// <summary>
+    /// 系统日志数据集
+    /// </summary>
+    public DbSet<SystemLog> SystemLogs { get; set; }
+
+    /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="options">数据库上下文配置选项</param>
@@ -61,6 +66,7 @@ public class AppDbContext : DbContext
         ConfigureSwapRequestEntity(modelBuilder);
         ConfigureSwapReviewEntity(modelBuilder);
         ConfigureProjectShowcaseEntity(modelBuilder);
+        ConfigureSystemLogEntity(modelBuilder);
 
         SeedData(modelBuilder);
     }
@@ -201,6 +207,32 @@ public class AppDbContext : DbContext
     }
 
     /// <summary>
+    /// 配置系统日志实体
+    /// </summary>
+    /// <param name="modelBuilder">模型构建器</param>
+    private static void ConfigureSystemLogEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SystemLog>(entity =>
+        {
+            entity.HasIndex(s => s.LogLevel);
+            entity.HasIndex(s => s.EventType);
+            entity.HasIndex(s => s.OperatorId);
+            entity.HasIndex(s => s.TargetUserId);
+            entity.HasIndex(s => s.CreatedAt);
+
+            entity.HasOne(sl => sl.Operator)
+                  .WithMany()
+                  .HasForeignKey(sl => sl.OperatorId)
+                  .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(sl => sl.TargetUser)
+                  .WithMany()
+                  .HasForeignKey(sl => sl.TargetUserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    /// <summary>
     /// 种子数据初始化
     /// </summary>
     /// <param name="modelBuilder">模型构建器</param>
@@ -213,30 +245,48 @@ public class AppDbContext : DbContext
             new User
             {
                 Id = 1,
-                Username = "zhangsan",
-                Email = "zhangsan@example.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
-                Avatar = "https://example.com/avatars/zhangsan.jpg",
+                Username = "admin",
+                Email = "admin@example.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+                Avatar = "https://example.com/avatars/admin.jpg",
+                Role = AppConstants.UserRoles.Admin,
+                IsLocked = false,
                 CreatedAt = now,
                 UpdatedAt = now
             },
             new User
             {
                 Id = 2,
+                Username = "zhangsan",
+                Email = "zhangsan@example.com",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                Avatar = "https://example.com/avatars/zhangsan.jpg",
+                Role = AppConstants.UserRoles.User,
+                IsLocked = false,
+                CreatedAt = now.AddHours(1),
+                UpdatedAt = now.AddHours(1)
+            },
+            new User
+            {
+                Id = 3,
                 Username = "lisi",
                 Email = "lisi@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
                 Avatar = "https://example.com/avatars/lisi.jpg",
+                Role = AppConstants.UserRoles.User,
+                IsLocked = false,
                 CreatedAt = now.AddDays(1),
                 UpdatedAt = now.AddDays(1)
             },
             new User
             {
-                Id = 3,
+                Id = 4,
                 Username = "wangwu",
                 Email = "wangwu@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
                 Avatar = "https://example.com/avatars/wangwu.jpg",
+                Role = AppConstants.UserRoles.User,
+                IsLocked = false,
                 CreatedAt = now.AddDays(2),
                 UpdatedAt = now.AddDays(2)
             }
@@ -249,7 +299,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 1,
-                OwnerId = 1,
+                OwnerId = 2,
                 Name = "红色羊毛线",
                 Category = "毛线",
                 Color = "红色",
@@ -264,7 +314,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 2,
-                OwnerId = 1,
+                OwnerId = 2,
                 Name = "蓝色棉布",
                 Category = "布料",
                 Color = "蓝色",
@@ -279,7 +329,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 3,
-                OwnerId = 2,
+                OwnerId = 3,
                 Name = "绿色丝绸",
                 Category = "布料",
                 Color = "绿色",
@@ -294,7 +344,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 4,
-                OwnerId = 2,
+                OwnerId = 3,
                 Name = "黄色纽扣套装",
                 Category = "配件",
                 Color = "黄色",
@@ -309,7 +359,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 5,
-                OwnerId = 3,
+                OwnerId = 4,
                 Name = "紫色蕾丝边",
                 Category = "配件",
                 Color = "紫色",
@@ -324,7 +374,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 6,
-                OwnerId = 3,
+                OwnerId = 4,
                 Name = "白色毛线",
                 Category = "毛线",
                 Color = "白色",
@@ -339,7 +389,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 7,
-                OwnerId = 1,
+                OwnerId = 2,
                 Name = "黑色皮革",
                 Category = "皮革",
                 Color = "黑色",
@@ -354,7 +404,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 8,
-                OwnerId = 2,
+                OwnerId = 3,
                 Name = "粉色绸缎",
                 Category = "布料",
                 Color = "粉色",
@@ -369,7 +419,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 9,
-                OwnerId = 3,
+                OwnerId = 4,
                 Name = "金色拉链",
                 Category = "配件",
                 Color = "金色",
@@ -384,7 +434,7 @@ public class AppDbContext : DbContext
             new Material
             {
                 Id = 10,
-                OwnerId = 1,
+                OwnerId = 2,
                 Name = "灰色帆布",
                 Category = "布料",
                 Color = "灰色",
@@ -405,8 +455,8 @@ public class AppDbContext : DbContext
             new SwapRequest
             {
                 Id = 1,
-                ProposerId = 1,
-                ReceiverId = 2,
+                ProposerId = 2,
+                ReceiverId = 3,
                 OfferedMaterialId = 1,
                 RequestedMaterialId = 3,
                 Message = "我想用红色羊毛线换你的绿色丝绸，可以吗？",
@@ -416,8 +466,8 @@ public class AppDbContext : DbContext
             new SwapRequest
             {
                 Id = 2,
-                ProposerId = 2,
-                ReceiverId = 3,
+                ProposerId = 3,
+                ReceiverId = 4,
                 OfferedMaterialId = 4,
                 RequestedMaterialId = 5,
                 Message = "想用黄色纽扣换紫色蕾丝边~",
@@ -427,8 +477,8 @@ public class AppDbContext : DbContext
             new SwapRequest
             {
                 Id = 3,
-                ProposerId = 3,
-                ReceiverId = 1,
+                ProposerId = 4,
+                ReceiverId = 2,
                 OfferedMaterialId = 6,
                 RequestedMaterialId = 2,
                 Message = "白色毛线换蓝色棉布怎么样？",
@@ -445,8 +495,8 @@ public class AppDbContext : DbContext
             {
                 Id = 1,
                 RequestId = 2,
-                ReviewerId = 2,
-                RevieweeId = 3,
+                ReviewerId = 3,
+                RevieweeId = 4,
                 Rating = 5,
                 Content = "交换非常顺利，对方很友善，材料质量也很好！",
                 CreatedAt = now.AddDays(6)
@@ -455,8 +505,8 @@ public class AppDbContext : DbContext
             {
                 Id = 2,
                 RequestId = 2,
-                ReviewerId = 3,
-                RevieweeId = 2,
+                ReviewerId = 4,
+                RevieweeId = 3,
                 Rating = 4,
                 Content = "整体不错，材料符合描述，沟通顺畅。",
                 CreatedAt = now.AddDays(6).AddHours(2)
@@ -470,7 +520,7 @@ public class AppDbContext : DbContext
             new ProjectShowcase
             {
                 Id = 1,
-                UserId = 1,
+                UserId = 2,
                 Title = "手工编织红色围巾",
                 Description = "用红色羊毛线编织的围巾，温暖又时尚，适合冬天佩戴。针法采用了基础的平针，适合初学者学习。",
                 UsedMaterials = "红色羊毛线500克",
@@ -480,7 +530,7 @@ public class AppDbContext : DbContext
             new ProjectShowcase
             {
                 Id = 2,
-                UserId = 2,
+                UserId = 3,
                 Title = "丝绸手工艺品",
                 Description = "用绿色丝绸制作的手工花束，色彩鲜艳，造型精美，可以作为家居装饰。",
                 UsedMaterials = "绿色丝绸2米",
@@ -490,7 +540,7 @@ public class AppDbContext : DbContext
             new ProjectShowcase
             {
                 Id = 3,
-                UserId = 3,
+                UserId = 4,
                 Title = "蕾丝装饰小布袋",
                 Description = "用紫色蕾丝边装饰的棉麻小布袋，精致可爱，可以用来装小物件。",
                 UsedMaterials = "紫色蕾丝边2米，棉麻布1米",
