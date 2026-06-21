@@ -192,6 +192,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IMaterialRepository, MaterialRepository>();
         services.AddScoped<ISwapRequestRepository, SwapRequestRepository>();
         services.AddScoped<ISwapReviewRepository, SwapReviewRepository>();
@@ -205,6 +206,9 @@ public static class ServiceCollectionExtensions
     private static void AddServices(this IServiceCollection services)
     {
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ITokenValidatorService, TokenValidatorService>();
+        services.AddScoped<ITokenGeneratorService, TokenGeneratorService>();
+        services.AddScoped<IUserSessionService, UserSessionService>();
         services.AddScoped<IMaterialService, MaterialService>();
         services.AddScoped<ISwapRequestService, SwapRequestService>();
         services.AddScoped<ISwapReviewService, SwapReviewService>();

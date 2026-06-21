@@ -28,18 +28,28 @@ using (var scope = app.Services.CreateScope())
     var logger = services.GetRequiredService<ILogger<Program>>();
     var context = services.GetRequiredService<AppDbContext>();
     
+    var supportsMigrations = context.Database.IsRelational();
+
     var retryCount = 0;
-    var maxRetries = 10;
+    var maxRetries = supportsMigrations ? 10 : 1;
+    var retryDelay = supportsMigrations ? 5000 : 0;
     while (retryCount < maxRetries)
     {
         try
         {
             retryCount++;
             logger.LogInformation($"正在初始化数据库，尝试 {retryCount}/{maxRetries}...");
-            
-            if ((await context.Database.GetPendingMigrationsAsync()).Any())
+
+            if (supportsMigrations)
             {
-                await context.Database.MigrateAsync();
+                if ((await context.Database.GetPendingMigrationsAsync()).Any())
+                {
+                    await context.Database.MigrateAsync();
+                }
+                else
+                {
+                    await context.Database.EnsureCreatedAsync();
+                }
             }
             else
             {
@@ -51,14 +61,19 @@ using (var scope = app.Services.CreateScope())
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, $"数据库初始化失败（尝试 {retryCount}/{maxRetries}），5秒后重试...");
+            logger.LogError(ex, $"数据库初始化失败（尝试 {retryCount}/{maxRetries}）{(retryDelay > 0 ? $", {retryDelay / 1000}秒后重试" : string.Empty)}...");
             if (retryCount >= maxRetries)
             {
                 logger.LogCritical(ex, "数据库初始化最终失败，但应用仍将尝试启动...");
             }
-            await Task.Delay(5000);
+            if (retryDelay > 0)
+            {
+                await Task.Delay(retryDelay);
+            }
         }
     }
 }
 
 app.Run();
+
+public partial class Program { }

@@ -35,6 +35,11 @@ public class AppDbContext : DbContext
     public DbSet<ProjectShowcase> ProjectShowcases { get; set; }
 
     /// <summary>
+    /// 刷新令牌（会话）数据集
+    /// </summary>
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
+
+    /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="options">数据库上下文配置选项</param>
@@ -51,6 +56,7 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         ConfigureUserEntity(modelBuilder);
+        ConfigureRefreshTokenEntity(modelBuilder);
         ConfigureMaterialEntity(modelBuilder);
         ConfigureSwapRequestEntity(modelBuilder);
         ConfigureSwapReviewEntity(modelBuilder);
@@ -99,6 +105,26 @@ public class AppDbContext : DbContext
                   .WithOne(p => p.User)
                   .HasForeignKey(p => p.UserId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    /// <summary>
+    /// 配置刷新令牌（会话）实体
+    /// </summary>
+    /// <param name="modelBuilder">模型构建器</param>
+    private static void ConfigureRefreshTokenEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasIndex(rt => rt.Token).IsUnique();
+            entity.HasIndex(rt => rt.AccessTokenJti).IsUnique();
+            entity.HasIndex(rt => rt.UserId);
+            entity.HasIndex(rt => rt.ExpiresAt);
+
+            entity.HasOne(rt => rt.User)
+                  .WithMany()
+                  .HasForeignKey(rt => rt.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

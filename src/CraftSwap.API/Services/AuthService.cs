@@ -1,45 +1,48 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using AutoMapper;
-using CraftSwap.Common;
 using CraftSwap.DTOs.Auth;
 using CraftSwap.DTOs.Common;
 using CraftSwap.Entities;
 using CraftSwap.Repositories;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
 
 namespace CraftSwap.Services;
 
 /// <summary>
-/// 认证服务实现
+/// 认证服务实现（业务协调层：组合校验、生成、存储服务）
 /// </summary>
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IMapper _mapper;
-    private readonly JwtSettings _jwtSettings;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ITokenValidatorService _tokenValidatorService;
+    private readonly ITokenGeneratorService _tokenGeneratorService;
+    private readonly IUserSessionService _userSessionService;
 
     /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="userRepository">用户仓储</param>
     /// <param name="mapper">对象映射器</param>
-    /// <param name="jwtSettings">JWT配置</param>
     /// <param name="httpContextAccessor">HTTP上下文访问器</param>
+    /// <param name="tokenValidatorService">令牌校验服务</param>
+    /// <param name="tokenGeneratorService">令牌生成服务</param>
+    /// <param name="userSessionService">用户会话服务</param>
     public AuthService(
         IUserRepository userRepository,
         IMapper mapper,
-        IOptions<JwtSettings> jwtSettings,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        ITokenValidatorService tokenValidatorService,
+        ITokenGeneratorService tokenGeneratorService,
+        IUserSessionService userSessionService)
     {
         _userRepository = userRepository;
         _mapper = mapper;
-        _jwtSettings = jwtSettings.Value;
         _httpContextAccessor = httpContextAccessor;
+        _tokenValidatorService = tokenValidatorService;
+        _tokenGeneratorService = tokenGeneratorService;
+        _userSessionService = userSessionService;
     }
 
     /// <summary>
@@ -68,15 +71,22 @@ public class AuthService : IAuthService
 
         var createdUser = await _userRepository.AddAsync(user);
 
-        var token = GenerateJwtToken(createdUser);
+        var tokenResult = _tokenGeneratorService.GenerateTokenPair(createdUser);
+
+        await _userSessionService.CreateSessionAsync(
+            createdUser.Id,
+            tokenResult.RefreshToken,
+            tokenResult.AccessTokenJti,
+            tokenResult.RefreshTokenExpiresAt);
+
         var userResponse = _mapper.Map<UserResponse>(createdUser);
 
         var authResponse = new AuthResponse
         {
             User = userResponse,
-            Token = token,
-            RefreshToken = GenerateRefreshToken(),
-            ExpiresIn = _jwtSettings.AccessTokenExpirationMinutes * 60
+            Token = tokenResult.AccessToken,
+            RefreshToken = tokenResult.RefreshToken,
+            ExpiresIn = tokenResult.ExpiresIn
         };
 
         return ApiResponse<AuthResponse>.Success(authResponse, "注册成功");
@@ -111,18 +121,105 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("用户名或密码错误");
         }
 
-        var token = GenerateJwtToken(user);
+        var tokenResult = _tokenGeneratorService.GenerateTokenPair(user);
+
+        await _userSessionService.CreateSessionAsync(
+            user.Id,
+            tokenResult.RefreshToken,
+            tokenResult.AccessTokenJti,
+            tokenResult.RefreshTokenExpiresAt);
+
         var userResponse = _mapper.Map<UserResponse>(user);
 
         var authResponse = new AuthResponse
         {
             User = userResponse,
-            Token = token,
-            RefreshToken = GenerateRefreshToken(),
-            ExpiresIn = _jwtSettings.AccessTokenExpirationMinutes * 60
+            Token = tokenResult.AccessToken,
+            RefreshToken = tokenResult.RefreshToken,
+            ExpiresIn = tokenResult.ExpiresIn
         };
 
         return ApiResponse<AuthResponse>.Success(authResponse, "登录成功");
+    }
+
+    /// <summary>
+    /// 刷新会话凭证
+    /// 流程：校验旧访问令牌(不校验生命周期) -> 校验刷新令牌 -> 校验令牌匹配 -> 吊销旧会话 -> 更新最近使用时间 -> 生成新凭证 -> 创建新会话 -> 返回响应
+    /// </summary>
+    /// <param name="request">刷新令牌请求</param>
+    /// <returns>认证响应（新的凭证组）</returns>
+    public async Task<ApiResponse<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)
+    {
+        var accessTokenValidation = await _tokenValidatorService.ValidateAccessTokenAsync(
+            request.AccessToken,
+            validateLifetime: false);
+
+        if (!accessTokenValidation.IsValid)
+        {
+            return ApiResponse<AuthResponse>.Fail(
+                accessTokenValidation.ErrorMessage ?? "访问令牌校验失败",
+                401);
+        }
+
+        var refreshTokenValidation = await _tokenValidatorService.ValidateRefreshTokenAsync(request.RefreshToken);
+
+        if (!refreshTokenValidation.IsValid)
+        {
+            return ApiResponse<AuthResponse>.Fail(
+                refreshTokenValidation.ErrorMessage ?? "刷新令牌校验失败",
+                401);
+        }
+
+        var refreshTokenEntity = refreshTokenValidation.RefreshToken;
+        if (refreshTokenEntity == null)
+        {
+            return ApiResponse<AuthResponse>.Fail("刷新令牌信息缺失", 401);
+        }
+
+        var isTokenPairValid = _tokenValidatorService.ValidateTokenPair(
+            accessTokenValidation.Jti!,
+            refreshTokenEntity);
+
+        if (!isTokenPairValid)
+        {
+            return ApiResponse<AuthResponse>.Fail("访问令牌与刷新令牌不匹配", 401);
+        }
+
+        if (accessTokenValidation.UserId != refreshTokenValidation.UserId)
+        {
+            await _userSessionService.RevokeAllSessionsAsync(refreshTokenEntity.UserId);
+            return ApiResponse<AuthResponse>.Fail("令牌所属用户不一致，安全起见已吊销所有会话", 401);
+        }
+
+        var user = await _userRepository.GetByIdAsync(refreshTokenEntity.UserId);
+        if (user == null)
+        {
+            return ApiResponse<AuthResponse>.Fail("用户不存在", 404);
+        }
+
+        await _userSessionService.RevokeSessionAsync(refreshTokenEntity.Id);
+
+        await _userSessionService.UpdateLastUsedAtAsync(refreshTokenEntity.Id);
+
+        var newTokenResult = _tokenGeneratorService.GenerateTokenPair(user);
+
+        await _userSessionService.CreateSessionAsync(
+            user.Id,
+            newTokenResult.RefreshToken,
+            newTokenResult.AccessTokenJti,
+            newTokenResult.RefreshTokenExpiresAt);
+
+        var userResponse = _mapper.Map<UserResponse>(user);
+
+        var authResponse = new AuthResponse
+        {
+            User = userResponse,
+            Token = newTokenResult.AccessToken,
+            RefreshToken = newTokenResult.RefreshToken,
+            ExpiresIn = newTokenResult.ExpiresIn
+        };
+
+        return ApiResponse<AuthResponse>.Success(authResponse, "凭证刷新成功");
     }
 
     /// <summary>
@@ -173,44 +270,6 @@ public class AuthService : IAuthService
         var userResponse = _mapper.Map<UserResponse>(updatedUser);
 
         return ApiResponse<UserResponse>.Success(userResponse, "更新成功");
-    }
-
-    /// <summary>
-    /// 生成JWT令牌
-    /// </summary>
-    /// <param name="user">用户实体</param>
-    /// <returns>JWT令牌字符串</returns>
-    private string GenerateJwtToken(User user)
-    {
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SecretKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: _jwtSettings.Issuer,
-            audience: _jwtSettings.Audience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenExpirationMinutes),
-            signingCredentials: credentials
-        );
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    /// <summary>
-    /// 生成刷新令牌
-    /// </summary>
-    /// <returns>刷新令牌字符串</returns>
-    private string GenerateRefreshToken()
-    {
-        return Guid.NewGuid().ToString("N");
     }
 
     /// <summary>

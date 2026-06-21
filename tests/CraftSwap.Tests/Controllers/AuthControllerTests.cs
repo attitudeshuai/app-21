@@ -317,6 +317,84 @@ public class AuthControllerTests
     }
 
     [Fact]
+    public async Task RefreshToken_WhenCalled_ReturnsOkObjectResult()
+    {
+        var request = new RefreshTokenRequest
+        {
+            AccessToken = "old-access-token",
+            RefreshToken = "old-refresh-token"
+        };
+
+        var authResponse = new AuthResponse
+        {
+            User = new UserResponse
+            {
+                Id = "1",
+                Username = "testuser",
+                Email = "test@test.com"
+            },
+            Token = "new-access-token",
+            RefreshToken = "new-refresh-token",
+            ExpiresIn = 3600
+        };
+
+        var expectedResponse = ApiResponse<AuthResponse>.Success(authResponse, "凭证刷新成功");
+
+        _mockAuthService
+            .Setup(x => x.RefreshTokenAsync(request))
+            .ReturnsAsync(expectedResponse);
+
+        var result = await _controller.RefreshToken(request);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(StatusCodes.Status200OK);
+
+        var actualResponse = okResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
+        actualResponse.Code.Should().Be(200);
+        actualResponse.Message.Should().Be("凭证刷新成功");
+        actualResponse.Data.Should().NotBeNull();
+        actualResponse.Data!.Token.Should().Be("new-access-token");
+        actualResponse.Data.RefreshToken.Should().Be("new-refresh-token");
+        actualResponse.Data.User.Username.Should().Be("testuser");
+
+        _mockAuthService.Verify(x => x.RefreshTokenAsync(request), Times.Once);
+    }
+
+    [Fact]
+    public async Task RefreshToken_WhenValidationFails_ReturnsOkWithErrorCode()
+    {
+        var request = new RefreshTokenRequest
+        {
+            AccessToken = "invalid-token",
+            RefreshToken = "invalid-refresh-token"
+        };
+
+        var expectedResponse = ApiResponse<AuthResponse>.Fail("刷新令牌已被吊销", 401);
+
+        _mockAuthService
+            .Setup(x => x.RefreshTokenAsync(request))
+            .ReturnsAsync(expectedResponse);
+
+        var result = await _controller.RefreshToken(request);
+
+        var okResult = result.Should().BeOfType<OkObjectResult>().Subject;
+        okResult.StatusCode.Should().Be(StatusCodes.Status200OK);
+
+        var actualResponse = okResult.Value.Should().BeOfType<ApiResponse<AuthResponse>>().Subject;
+        actualResponse.Code.Should().Be(401);
+        actualResponse.Message.Should().Be("刷新令牌已被吊销");
+        actualResponse.Data.Should().BeNull();
+    }
+
+    [Fact]
+    public void RefreshToken_HasAllowAnonymousAttribute()
+    {
+        var method = typeof(AuthController).GetMethod(nameof(AuthController.RefreshToken));
+        var attributes = method!.GetCustomAttributes(typeof(AllowAnonymousAttribute), true);
+        attributes.Should().NotBeEmpty();
+    }
+
+    [Fact]
     public void AuthController_HasCorrectRoutePrefix()
     {
         var controllerType = typeof(AuthController);
