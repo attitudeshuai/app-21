@@ -1,0 +1,87 @@
+# .NET / ASP.NET Core
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.swp
+*.log
+*.pdb
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.sln.docstates
+*.VC.db
+*.opendb
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nuget.props
+*.nuget.targets
+
+# NuGet packages
+packages/
+*.nupkg
+
+# Secrets & local config
+appsettings.Development.json
+appsettings.Local.json
+.env
+.env.local
+appsecrets.json
+secrets.json
+
+# Test results
+TestResults/
+coverage/
+*.trx
+*.cobertura.xml
+
+# IDE
+.vscode/
+.idea/
+*.sln.iml
+*.csproj.user
+*.resources
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Node modules (if any frontend)
+node_modules/
+dist/

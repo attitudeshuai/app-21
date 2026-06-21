@@ -1,0 +1,42 @@
+using CraftSwap.DTOs.Materials;
+using FluentValidation;
+
+namespace CraftSwap.Validators;
+
+/// <summary>
+/// 更新材料请求验证器
+/// </summary>
+public class UpdateMaterialRequestValidator : AbstractValidator<UpdateMaterialRequest>
+{
+    /// <summary>
+    /// 构造函数，配置更新材料请求验证规则
+    /// </summary>
+    public UpdateMaterialRequestValidator()
+    {
+        RuleFor(x => x.Title)
+            .Length(2, 100).WithMessage("标题长度必须在2到100个字符之间")
+            .When(x => !string.IsNullOrEmpty(x.Title));
+
+        RuleFor(x => x.Description)
+            .MaximumLength(2000).WithMessage("描述长度不能超过2000个字符")
+            .When(x => !string.IsNullOrEmpty(x.Description));
+
+        RuleFor(x => x.Category)
+            .MaximumLength(50).WithMessage("分类长度不能超过50个字符")
+            .When(x => !string.IsNullOrEmpty(x.Category));
+
+        RuleFor(x => x.ImageUrls)
+            .Must(x => x == null || x.Count <= 20).WithMessage("图片数量不能超过20张");
+
+        RuleForEach(x => x.ImageUrls!)
+            .MaximumLength(500).WithMessage("图片URL长度不能超过500个字符")
+            .When(x => x.ImageUrls != null && x.ImageUrls.Count > 0);
+
+        RuleFor(x => x.Tags)
+            .Must(x => x == null || x.Count <= 10).WithMessage("标签数量不能超过10个");
+
+        RuleForEach(x => x.Tags!)
+            .MaximumLength(30).WithMessage("单个标签长度不能超过30个字符")
+            .When(x => x.Tags != null && x.Tags.Count > 0);
+    }
+}

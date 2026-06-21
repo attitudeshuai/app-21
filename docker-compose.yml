@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: craftswap_app
+    ports:
+      - "8096:8091"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=mysql;Port=3306;Database=craftswap;Uid=app_user;Pwd=app_pass;
+      - JwtSettings__SecretKey=CraftSwapSuperSecretKeyForJwtTokenGeneration2024AndBeyond@#
+      - JwtSettings__Issuer=CraftSwap
+      - JwtSettings__Audience=CraftSwapUsers
+      - JwtSettings__AccessTokenExpirationMinutes=1440
+      - JwtSettings__RefreshTokenExpirationDays=7
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - craftswap-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: craftswap_mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_pass
+      - MYSQL_DATABASE=craftswap
+      - MYSQL_USER=app_user
+      - MYSQL_PASSWORD=app_pass
+    ports:
+      - "13321:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "if mysqladmin ping -h localhost -uroot -proot_pass; then exit 0; else exit 1; fi"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 90s
+    restart: unless-stopped
+    networks:
+      - craftswap-network
+
+  adminer:
+    image: adminer:latest
+    container_name: craftswap_adminer
+    ports:
+      - "8082:8080"
+    depends_on:
+      - mysql
+    restart: unless-stopped
+    networks:
+      - craftswap-network
+
+volumes:
+  mysql_data:
+
+networks:
+  craftswap-network:
+    driver: bridge
