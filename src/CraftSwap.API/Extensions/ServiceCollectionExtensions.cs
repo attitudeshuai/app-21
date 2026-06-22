@@ -217,6 +217,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IStatsService, StatsService>();
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<ISystemLogService, SystemLogService>();
+        services.AddScoped<ISwapRequestStatusValidator, SwapRequestStatusValidator>();
+        services.AddScoped<IMaterialSyncService, MaterialSyncService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IHighlightService, HighlightService>();
     }

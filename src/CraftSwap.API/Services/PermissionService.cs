@@ -1,19 +1,30 @@
 using System.Security.Claims;
 using CraftSwap.Common;
+using CraftSwap.Entities;
 using CraftSwap.Exceptions;
 
 namespace CraftSwap.Services;
 
-/// <summary>
-/// 权限服务实现（权限判断层）
-/// </summary>
 public class PermissionService : IPermissionService
 {
-    /// <summary>
-    /// 检查当前用户是否为管理员
-    /// </summary>
-    /// <param name="user">当前用户ClaimsPrincipal</param>
-    /// <returns>是否为管理员</returns>
+    private static readonly Dictionary<string, string> _operationRequiredRole = new()
+    {
+        [AppConstants.SwapRequestStatus.Accepted] = "Receiver",
+        [AppConstants.SwapRequestStatus.Rejected] = "Receiver",
+        [AppConstants.SwapRequestStatus.Cancelled] = "Proposer",
+        [AppConstants.SwapRequestStatus.InProgress] = "Either",
+        [AppConstants.SwapRequestStatus.Completed] = "Either"
+    };
+
+    private static readonly Dictionary<string, string> _operationDisplayName = new()
+    {
+        [AppConstants.SwapRequestStatus.Accepted] = "接受",
+        [AppConstants.SwapRequestStatus.Rejected] = "拒绝",
+        [AppConstants.SwapRequestStatus.Cancelled] = "取消",
+        [AppConstants.SwapRequestStatus.InProgress] = "开始进行",
+        [AppConstants.SwapRequestStatus.Completed] = "完成"
+    };
+
     public bool IsAdmin(ClaimsPrincipal user)
     {
         if (user?.Identity?.IsAuthenticated != true)
@@ -25,11 +36,6 @@ public class PermissionService : IPermissionService
         return role == AppConstants.UserRoles.Admin;
     }
 
-    /// <summary>
-    /// 获取当前用户ID
-    /// </summary>
-    /// <param name="user">当前用户ClaimsPrincipal</param>
-    /// <returns>用户ID，未认证返回null</returns>
     public int? GetCurrentUserId(ClaimsPrincipal user)
     {
         if (user?.Identity?.IsAuthenticated != true)
@@ -46,11 +52,6 @@ public class PermissionService : IPermissionService
         return null;
     }
 
-    /// <summary>
-    /// 获取当前用户名
-    /// </summary>
-    /// <param name="user">当前用户ClaimsPrincipal</param>
-    /// <returns>用户名，未认证返回null</returns>
     public string? GetCurrentUserName(ClaimsPrincipal user)
     {
         if (user?.Identity?.IsAuthenticated != true)
@@ -61,11 +62,6 @@ public class PermissionService : IPermissionService
         return user.FindFirst(ClaimTypes.Name)?.Value;
     }
 
-    /// <summary>
-    /// 获取当前用户角色
-    /// </summary>
-    /// <param name="user">当前用户ClaimsPrincipal</param>
-    /// <returns>用户角色，未认证返回null</returns>
     public string? GetCurrentUserRole(ClaimsPrincipal user)
     {
         if (user?.Identity?.IsAuthenticated != true)
@@ -76,15 +72,37 @@ public class PermissionService : IPermissionService
         return user.FindFirst(ClaimTypes.Role)?.Value;
     }
 
-    /// <summary>
-    /// 确保当前用户是管理员，否则抛出异常
-    /// </summary>
-    /// <param name="user">当前用户ClaimsPrincipal</param>
     public void EnsureAdmin(ClaimsPrincipal user)
     {
         if (!IsAdmin(user))
         {
             throw new BusinessException(403, "权限不足，需要管理员角色");
         }
+    }
+
+    public (bool Allowed, string ErrorMessage) ValidateSwapRequestOperation(int userId, SwapRequest swapRequest, string targetStatus)
+    {
+        var isProposer = swapRequest.ProposerId == userId;
+        var isReceiver = swapRequest.ReceiverId == userId;
+
+        if (!isProposer && !isReceiver)
+        {
+            return (false, "您不是该交换请求的参与方，无权操作");
+        }
+
+        if (!_operationRequiredRole.TryGetValue(targetStatus, out var requiredRole))
+        {
+            return (false, $"不支持的操作类型: {_operationDisplayName.GetValueOrDefault(targetStatus, targetStatus)}");
+        }
+
+        var operationName = _operationDisplayName.GetValueOrDefault(targetStatus, targetStatus);
+
+        return requiredRole switch
+        {
+            "Receiver" when !isReceiver => (false, $"仅接收方可以{operationName}交换请求"),
+            "Proposer" when !isProposer => (false, $"仅发起方可以{operationName}交换请求"),
+            "Either" when !isProposer && !isReceiver => (false, $"仅交换请求的参与方可以{operationName}交换请求"),
+            _ => (true, string.Empty)
+        };
     }
 }

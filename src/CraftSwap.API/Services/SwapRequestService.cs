@@ -9,40 +9,34 @@ using Microsoft.AspNetCore.Http;
 
 namespace CraftSwap.Services;
 
-/// <summary>
-/// 交换请求服务实现
-/// </summary>
 public class SwapRequestService : ISwapRequestService
 {
     private readonly ISwapRequestRepository _swapRequestRepository;
     private readonly IMaterialRepository _materialRepository;
     private readonly IMapper _mapper;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly ISwapRequestStatusValidator _statusValidator;
+    private readonly IPermissionService _permissionService;
+    private readonly IMaterialSyncService _materialSyncService;
 
-    /// <summary>
-    /// 构造函数
-    /// </summary>
-    /// <param name="swapRequestRepository">交换请求仓储</param>
-    /// <param name="materialRepository">材料仓储</param>
-    /// <param name="mapper">对象映射器</param>
-    /// <param name="httpContextAccessor">HTTP上下文访问器</param>
     public SwapRequestService(
         ISwapRequestRepository swapRequestRepository,
         IMaterialRepository materialRepository,
         IMapper mapper,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        ISwapRequestStatusValidator statusValidator,
+        IPermissionService permissionService,
+        IMaterialSyncService materialSyncService)
     {
         _swapRequestRepository = swapRequestRepository;
         _materialRepository = materialRepository;
         _mapper = mapper;
         _httpContextAccessor = httpContextAccessor;
+        _statusValidator = statusValidator;
+        _permissionService = permissionService;
+        _materialSyncService = materialSyncService;
     }
 
-    /// <summary>
-    /// 分页获取交换请求列表
-    /// </summary>
-    /// <param name="parameters">查询参数</param>
-    /// <returns>分页交换请求响应</returns>
     public async Task<ApiResponse<PagedResponse<SwapRequestResponse>>> GetPagedAsync(SwapRequestQueryParameters parameters)
     {
         int? proposerId = null;
@@ -79,11 +73,6 @@ public class SwapRequestService : ISwapRequestService
         return ApiResponse<PagedResponse<SwapRequestResponse>>.Success(pagedResponse, "获取成功");
     }
 
-    /// <summary>
-    /// 根据ID获取交换请求详情
-    /// </summary>
-    /// <param name="id">交换请求ID</param>
-    /// <returns>交换请求响应</returns>
     public async Task<ApiResponse<SwapRequestResponse>> GetByIdAsync(int id)
     {
         var swapRequest = await _swapRequestRepository.GetByIdAsync(id);
@@ -96,11 +85,6 @@ public class SwapRequestService : ISwapRequestService
         return ApiResponse<SwapRequestResponse>.Success(swapRequestResponse, "获取成功");
     }
 
-    /// <summary>
-    /// 创建交换请求
-    /// </summary>
-    /// <param name="request">创建交换请求请求</param>
-    /// <returns>交换请求响应</returns>
     public async Task<ApiResponse<SwapRequestResponse>> CreateAsync(CreateSwapRequestRequest request)
     {
         var userId = GetCurrentUserId();
@@ -153,12 +137,6 @@ public class SwapRequestService : ISwapRequestService
         return ApiResponse<SwapRequestResponse>.Success(swapRequestResponse, "创建成功");
     }
 
-    /// <summary>
-    /// 更新交换请求
-    /// </summary>
-    /// <param name="id">交换请求ID</param>
-    /// <param name="request">更新交换请求请求</param>
-    /// <returns>交换请求响应</returns>
     public async Task<ApiResponse<SwapRequestResponse>> UpdateAsync(int id, UpdateSwapRequestRequest request)
     {
         var userId = GetCurrentUserId();
@@ -191,11 +169,6 @@ public class SwapRequestService : ISwapRequestService
         return ApiResponse<SwapRequestResponse>.Success(swapRequestResponse, "更新成功");
     }
 
-    /// <summary>
-    /// 删除交换请求
-    /// </summary>
-    /// <param name="id">交换请求ID</param>
-    /// <returns>操作结果</returns>
     public async Task<ApiResponse> DeleteAsync(int id)
     {
         var userId = GetCurrentUserId();
@@ -224,12 +197,6 @@ public class SwapRequestService : ISwapRequestService
         return ApiResponse.Success(null, "删除成功");
     }
 
-    /// <summary>
-    /// 更新交换请求状态
-    /// </summary>
-    /// <param name="id">交换请求ID</param>
-    /// <param name="status">新状态</param>
-    /// <returns>交换请求响应</returns>
     public async Task<ApiResponse<SwapRequestResponse>> UpdateStatusAsync(int id, string status)
     {
         var userId = GetCurrentUserId();
@@ -244,61 +211,39 @@ public class SwapRequestService : ISwapRequestService
             return ApiResponse<SwapRequestResponse>.Fail("交换请求不存在", 404);
         }
 
-        if (swapRequest.ReceiverId != userId.Value)
+        var (transitionAllowed, transitionError) = _statusValidator.ValidateTransition(swapRequest, status);
+        if (!transitionAllowed)
         {
-            return ApiResponse<SwapRequestResponse>.Fail("无权限修改该交换请求状态", 403);
+            return ApiResponse<SwapRequestResponse>.Fail(transitionError);
         }
 
-        var validStatuses = new[]
+        var (permissionAllowed, permissionError) = _permissionService.ValidateSwapRequestOperation(userId.Value, swapRequest, status);
+        if (!permissionAllowed)
         {
-            AppConstants.SwapRequestStatus.Accepted,
-            AppConstants.SwapRequestStatus.Rejected,
-            AppConstants.SwapRequestStatus.Cancelled,
-            AppConstants.SwapRequestStatus.InProgress,
-            AppConstants.SwapRequestStatus.Completed
-        };
-
-        if (!validStatuses.Contains(status))
-        {
-            return ApiResponse<SwapRequestResponse>.Fail("无效的交换请求状态");
+            return ApiResponse<SwapRequestResponse>.Fail(permissionError, 403);
         }
-
-        if (swapRequest.Status == AppConstants.SwapRequestStatus.Completed ||
-            swapRequest.Status == AppConstants.SwapRequestStatus.Rejected ||
-            swapRequest.Status == AppConstants.SwapRequestStatus.Cancelled)
-        {
-            return ApiResponse<SwapRequestResponse>.Fail("该请求状态已确定，无法修改");
-        }
-
-        swapRequest.Status = status;
 
         if (status == AppConstants.SwapRequestStatus.Completed)
         {
-            var offeredMaterial = await _materialRepository.GetByIdAsync(swapRequest.OfferedMaterialId);
-            if (offeredMaterial != null)
+            var materialValidation = await _materialSyncService.ValidateMaterialsForSwapAsync(swapRequest);
+            if (materialValidation.Code != 200)
             {
-                offeredMaterial.Status = AppConstants.MaterialStatus.Swapped;
-                await _materialRepository.UpdateAsync(offeredMaterial);
-            }
-
-            var requestedMaterial = await _materialRepository.GetByIdAsync(swapRequest.RequestedMaterialId);
-            if (requestedMaterial != null)
-            {
-                requestedMaterial.Status = AppConstants.MaterialStatus.Swapped;
-                await _materialRepository.UpdateAsync(requestedMaterial);
+                return ApiResponse<SwapRequestResponse>.Fail(materialValidation.Message);
             }
         }
 
+        swapRequest.Status = status;
         var updatedSwapRequest = await _swapRequestRepository.UpdateAsync(swapRequest);
-        var swapRequestResponse = _mapper.Map<SwapRequestResponse>(updatedSwapRequest);
 
+        if (status == AppConstants.SwapRequestStatus.Completed)
+        {
+            await _materialSyncService.SyncMaterialsToSwappedAsync(swapRequest);
+        }
+
+        var swapRequestResponse = _mapper.Map<SwapRequestResponse>(updatedSwapRequest);
         return ApiResponse<SwapRequestResponse>.Success(swapRequestResponse, "状态更新成功");
     }
 
-    /// <summary>
-    /// 获取当前用户ID
-    /// </summary>
-    /// <returns>用户ID，未登录返回null</returns>
     private int? GetCurrentUserId()
     {
         var userIdClaim = _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
