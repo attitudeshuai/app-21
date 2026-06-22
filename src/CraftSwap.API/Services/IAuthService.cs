@@ -41,4 +41,11 @@ public interface IAuthService
     /// <param name="request">更新资料请求</param>
     /// <returns>用户响应</returns>
     Task<ApiResponse<UserResponse>> UpdateProfileAsync(UpdateProfileRequest request);
+
+    /// <summary>
+    /// 修改用户密码
+    /// </summary>
+    /// <param name="request">修改密码请求</param>
+    /// <returns>操作结果</returns>
+    Task<ApiResponse> ChangePasswordAsync(ChangePasswordRequest request);
 }

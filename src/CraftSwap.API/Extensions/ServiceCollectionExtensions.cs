@@ -199,6 +199,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISwapReviewRepository, SwapReviewRepository>();
         services.AddScoped<IProjectShowcaseRepository, ProjectShowcaseRepository>();
         services.AddScoped<ISystemLogRepository, SystemLogRepository>();
+        services.AddScoped<IPasswordHistoryRepository, PasswordHistoryRepository>();
     }
 
     /// <summary>
@@ -222,5 +223,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMaterialSyncService, MaterialSyncService>();
         services.AddScoped<IAdminService, AdminService>();
         services.AddScoped<IHighlightService, HighlightService>();
+        services.AddScoped<IPasswordPolicyService, PasswordPolicyService>();
     }
 }

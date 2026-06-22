@@ -38,7 +38,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt))
             .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role))
             .ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => src.AverageRating))
-            .ForMember(dest => dest.TotalReviewCount, opt => opt.MapFrom(src => src.TotalReviewCount));
+            .ForMember(dest => dest.TotalReviewCount, opt => opt.MapFrom(src => src.TotalReviewCount))
+            .ForMember(dest => dest.PasswordMustBeChanged, opt => opt.MapFrom(src => src.PasswordMustBeChanged))
+            .ForMember(dest => dest.PasswordLastChangedAt, opt => opt.MapFrom(src => src.PasswordLastChangedAt))
+            .ForMember(dest => dest.PasswordSecurityTip, opt => opt.Ignore());
 
         CreateMap<RegisterRequest, User>()
             .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
@@ -52,7 +55,10 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ReceivedReviews, opt => opt.Ignore())
             .ForMember(dest => dest.ProjectShowcases, opt => opt.Ignore())
             .ForMember(dest => dest.AverageRating, opt => opt.Ignore())
-            .ForMember(dest => dest.TotalReviewCount, opt => opt.Ignore());
+            .ForMember(dest => dest.TotalReviewCount, opt => opt.Ignore())
+            .ForMember(dest => dest.PasswordLastChangedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.PasswordMustBeChanged, opt => opt.Ignore())
+            .ForMember(dest => dest.PasswordHistories, opt => opt.Ignore());
 
         CreateMap<UpdateProfileRequest, User>()
             .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.AvatarUrl))

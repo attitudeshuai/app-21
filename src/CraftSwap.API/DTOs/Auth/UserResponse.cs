@@ -53,4 +53,19 @@ public class UserResponse
     public decimal AverageRating { get; set; }
 
     public int TotalReviewCount { get; set; }
+
+    /// <summary>
+    /// 密码是否需要重置
+    /// </summary>
+    public bool PasswordMustBeChanged { get; set; }
+
+    /// <summary>
+    /// 密码最后修改时间
+    /// </summary>
+    public DateTime? PasswordLastChangedAt { get; set; }
+
+    /// <summary>
+    /// 密码安全提示（用于渐进式升级引导）
+    /// </summary>
+    public string? PasswordSecurityTip { get; set; }
 }

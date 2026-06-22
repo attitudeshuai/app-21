@@ -1,3 +1,4 @@
+using CraftSwap.Common;
 using CraftSwap.DTOs.Auth;
 using FluentValidation;
 
@@ -25,8 +26,32 @@ public class RegisterRequestValidator : AbstractValidator<RegisterRequest>
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("密码不能为空")
-            .Length(6, 100).WithMessage("密码长度必须在6到100个字符之间")
-            .Matches(@"^(?=.*[a-zA-Z])(?=.*\d).+$").WithMessage("密码必须包含字母和数字");
+            .Length(AppConstants.PasswordPolicy.MinimumLength, AppConstants.PasswordPolicy.MaximumLength)
+            .WithMessage($"密码长度必须在 {AppConstants.PasswordPolicy.MinimumLength} 到 {AppConstants.PasswordPolicy.MaximumLength} 个字符之间");
+
+        if (AppConstants.PasswordPolicy.RequireUppercase)
+        {
+            RuleFor(x => x.Password)
+                .Matches(@"[A-Z]").WithMessage("密码必须包含至少一个大写字母");
+        }
+
+        if (AppConstants.PasswordPolicy.RequireLowercase)
+        {
+            RuleFor(x => x.Password)
+                .Matches(@"[a-z]").WithMessage("密码必须包含至少一个小写字母");
+        }
+
+        if (AppConstants.PasswordPolicy.RequireDigit)
+        {
+            RuleFor(x => x.Password)
+                .Matches(@"[0-9]").WithMessage("密码必须包含至少一个数字");
+        }
+
+        if (AppConstants.PasswordPolicy.RequireNonAlphanumeric)
+        {
+            RuleFor(x => x.Password)
+                .Matches(@"[^a-zA-Z0-9]").WithMessage("密码必须包含至少一个特殊字符");
+        }
 
         RuleFor(x => x.ConfirmPassword)
             .NotEmpty().WithMessage("确认密码不能为空")

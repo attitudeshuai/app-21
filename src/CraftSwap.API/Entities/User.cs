@@ -109,4 +109,19 @@ public class User
     /// 用户的作品展示列表
     /// </summary>
     public ICollection<ProjectShowcase> ProjectShowcases { get; set; } = new List<ProjectShowcase>();
+
+    /// <summary>
+    /// 密码最后修改时间
+    /// </summary>
+    public DateTime? PasswordLastChangedAt { get; set; }
+
+    /// <summary>
+    /// 密码是否需要重置（首次登录或管理员强制重置）
+    /// </summary>
+    public bool PasswordMustBeChanged { get; set; }
+
+    /// <summary>
+    /// 密码历史记录
+    /// </summary>
+    public ICollection<PasswordHistory> PasswordHistories { get; set; } = new List<PasswordHistory>();
 }

@@ -182,6 +182,57 @@ public static class AppConstants
     }
 
     /// <summary>
+    /// 密码安全策略
+    /// </summary>
+    public static class PasswordPolicy
+    {
+        /// <summary>
+        /// 密码最小长度
+        /// </summary>
+        public const int MinimumLength = 8;
+
+        /// <summary>
+        /// 密码最大长度
+        /// </summary>
+        public const int MaximumLength = 100;
+
+        /// <summary>
+        /// 是否要求包含大写字母
+        /// </summary>
+        public const bool RequireUppercase = true;
+
+        /// <summary>
+        /// 是否要求包含小写字母
+        /// </summary>
+        public const bool RequireLowercase = true;
+
+        /// <summary>
+        /// 是否要求包含数字
+        /// </summary>
+        public const bool RequireDigit = true;
+
+        /// <summary>
+        /// 是否要求包含特殊字符
+        /// </summary>
+        public const bool RequireNonAlphanumeric = true;
+
+        /// <summary>
+        /// 历史密码检查数量（不能与最近N次密码重复）
+        /// </summary>
+        public const int HistoryCheckCount = 5;
+
+        /// <summary>
+        /// 密码过期天数（0表示不过期）
+        /// </summary>
+        public const int PasswordExpiryDays = 90;
+
+        /// <summary>
+        /// 弱密码检测阈值（密码强度得分低于此值视为弱密码）
+        /// </summary>
+        public const int WeakPasswordScoreThreshold = 3;
+    }
+
+    /// <summary>
     /// 系统事件类型
     /// </summary>
     public static class EventTypes

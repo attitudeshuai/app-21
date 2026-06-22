@@ -45,6 +45,11 @@ public class AppDbContext : DbContext
     public DbSet<SystemLog> SystemLogs { get; set; }
 
     /// <summary>
+    /// 密码历史记录数据集
+    /// </summary>
+    public DbSet<PasswordHistory> PasswordHistories { get; set; }
+
+    /// <summary>
     /// 构造函数
     /// </summary>
     /// <param name="options">数据库上下文配置选项</param>
@@ -61,6 +66,7 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         ConfigureUserEntity(modelBuilder);
+        ConfigurePasswordHistoryEntity(modelBuilder);
         ConfigureRefreshTokenEntity(modelBuilder);
         ConfigureMaterialEntity(modelBuilder);
         ConfigureSwapRequestEntity(modelBuilder);
@@ -111,6 +117,24 @@ public class AppDbContext : DbContext
                   .WithOne(p => p.User)
                   .HasForeignKey(p => p.UserId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    /// <summary>
+    /// 配置密码历史记录实体
+    /// </summary>
+    /// <param name="modelBuilder">模型构建器</param>
+    private static void ConfigurePasswordHistoryEntity(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PasswordHistory>(entity =>
+        {
+            entity.HasIndex(ph => ph.UserId);
+            entity.HasIndex(ph => ph.CreatedAt);
+
+            entity.HasOne(ph => ph.User)
+                  .WithMany(u => u.PasswordHistories)
+                  .HasForeignKey(ph => ph.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 

@@ -75,6 +75,19 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// 修改密码
+    /// </summary>
+    /// <param name="request">修改密码请求</param>
+    /// <returns>操作结果</returns>
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        var response = await _authService.ChangePasswordAsync(request);
+        return Ok(response);
+    }
+
+    /// <summary>
     /// 刷新会话凭证
     /// </summary>
     /// <remarks>

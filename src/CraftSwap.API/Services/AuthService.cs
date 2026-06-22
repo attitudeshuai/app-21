@@ -21,6 +21,8 @@ public class AuthService : IAuthService
     private readonly ITokenGeneratorService _tokenGeneratorService;
     private readonly IUserSessionService _userSessionService;
     private readonly ISystemLogService _systemLogService;
+    private readonly IPasswordPolicyService _passwordPolicyService;
+    private readonly IPasswordHistoryRepository _passwordHistoryRepository;
 
     /// <summary>
     /// 构造函数
@@ -32,6 +34,8 @@ public class AuthService : IAuthService
     /// <param name="tokenGeneratorService">令牌生成服务</param>
     /// <param name="userSessionService">用户会话服务</param>
     /// <param name="systemLogService">系统日志服务</param>
+    /// <param name="passwordPolicyService">密码策略服务</param>
+    /// <param name="passwordHistoryRepository">密码历史仓储</param>
     public AuthService(
         IUserRepository userRepository,
         IMapper mapper,
@@ -39,7 +43,9 @@ public class AuthService : IAuthService
         ITokenValidatorService tokenValidatorService,
         ITokenGeneratorService tokenGeneratorService,
         IUserSessionService userSessionService,
-        ISystemLogService systemLogService)
+        ISystemLogService systemLogService,
+        IPasswordPolicyService passwordPolicyService,
+        IPasswordHistoryRepository passwordHistoryRepository)
     {
         _userRepository = userRepository;
         _mapper = mapper;
@@ -48,6 +54,8 @@ public class AuthService : IAuthService
         _tokenGeneratorService = tokenGeneratorService;
         _userSessionService = userSessionService;
         _systemLogService = systemLogService;
+        _passwordPolicyService = passwordPolicyService;
+        _passwordHistoryRepository = passwordHistoryRepository;
     }
 
     /// <summary>
@@ -69,12 +77,22 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail("邮箱已被注册");
         }
 
+        var passwordValidation = _passwordPolicyService.ValidatePassword(request.Password);
+        if (!passwordValidation.IsValid)
+        {
+            var errorMessage = string.Join(" ", passwordValidation.Errors);
+            return ApiResponse<AuthResponse>.Fail(errorMessage);
+        }
+
         var user = _mapper.Map<User>(request);
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
         user.CreatedAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
+        user.PasswordLastChangedAt = DateTime.UtcNow;
 
         var createdUser = await _userRepository.AddAsync(user);
+
+        await _passwordHistoryRepository.AddAsync(createdUser.Id, createdUser.PasswordHash);
 
         var tokenResult = _tokenGeneratorService.GenerateTokenPair(createdUser);
 
@@ -85,6 +103,7 @@ public class AuthService : IAuthService
             tokenResult.RefreshTokenExpiresAt);
 
         var userResponse = _mapper.Map<UserResponse>(createdUser);
+        userResponse.PasswordSecurityTip = GetPasswordUpgradeTip(passwordValidation);
 
         var authResponse = new AuthResponse
         {
@@ -171,6 +190,18 @@ public class AuthService : IAuthService
             return ApiResponse<AuthResponse>.Fail(lockMessage, 403);
         }
 
+        var passwordStrength = _passwordPolicyService.CalculatePasswordStrength(request.Password);
+        var needsUpgrade = passwordStrength < AppConstants.PasswordPolicy.WeakPasswordScoreThreshold;
+
+        if (needsUpgrade && user.PasswordLastChangedAt == null)
+        {
+            user.PasswordLastChangedAt = user.CreatedAt;
+        }
+
+        bool isPasswordExpired = AppConstants.PasswordPolicy.PasswordExpiryDays > 0
+            && user.PasswordLastChangedAt.HasValue
+            && (DateTime.UtcNow - user.PasswordLastChangedAt.Value).TotalDays > AppConstants.PasswordPolicy.PasswordExpiryDays;
+
         var tokenResult = _tokenGeneratorService.GenerateTokenPair(user);
 
         await _userSessionService.CreateSessionAsync(
@@ -180,6 +211,11 @@ public class AuthService : IAuthService
             tokenResult.RefreshTokenExpiresAt);
 
         var userResponse = _mapper.Map<UserResponse>(user);
+        userResponse.PasswordSecurityTip = GeneratePasswordSecurityTip(
+            passwordStrength,
+            needsUpgrade,
+            isPasswordExpired,
+            user.PasswordLastChangedAt);
 
         var authResponse = new AuthResponse
         {
@@ -299,6 +335,19 @@ public class AuthService : IAuthService
         }
 
         var userResponse = _mapper.Map<UserResponse>(user);
+
+        var isPasswordExpired = AppConstants.PasswordPolicy.PasswordExpiryDays > 0
+            && user.PasswordLastChangedAt.HasValue
+            && (DateTime.UtcNow - user.PasswordLastChangedAt.Value).TotalDays > AppConstants.PasswordPolicy.PasswordExpiryDays;
+
+        var passwordTip = GeneratePasswordSecurityTip(
+            passwordStrength: 0,
+            needsUpgrade: false,
+            isPasswordExpired: isPasswordExpired,
+            passwordLastChangedAt: user.PasswordLastChangedAt);
+
+        userResponse.PasswordSecurityTip = passwordTip;
+
         return ApiResponse<UserResponse>.Success(userResponse, "获取成功");
     }
 
@@ -331,6 +380,72 @@ public class AuthService : IAuthService
     }
 
     /// <summary>
+    /// 修改用户密码
+    /// </summary>
+    /// <param name="request">修改密码请求</param>
+    /// <returns>操作结果</returns>
+    public async Task<ApiResponse> ChangePasswordAsync(ChangePasswordRequest request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId == null)
+        {
+            return ApiResponse.Fail("用户未登录", 401);
+        }
+
+        var user = await _userRepository.GetByIdAsync(userId.Value);
+        if (user == null)
+        {
+            return ApiResponse.Fail("用户不存在", 404);
+        }
+
+        var isCurrentPasswordValid = BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash);
+        if (!isCurrentPasswordValid)
+        {
+            return ApiResponse.Fail("当前密码不正确");
+        }
+
+        var passwordValidation = _passwordPolicyService.ValidatePassword(request.NewPassword);
+        if (!passwordValidation.IsValid)
+        {
+            var errorMessage = string.Join(" ", passwordValidation.Errors);
+            return ApiResponse.Fail(errorMessage);
+        }
+
+        var historyHashes = await _passwordHistoryRepository.GetPasswordHashesByUserIdAsync(userId.Value);
+        var recentHashes = historyHashes.Take(AppConstants.PasswordPolicy.HistoryCheckCount).ToList();
+
+        if (_passwordPolicyService.IsPasswordInHistory(request.NewPassword, recentHashes))
+        {
+            return ApiResponse.Fail($"新密码不能与最近 {AppConstants.PasswordPolicy.HistoryCheckCount} 次使用过的密码相同");
+        }
+
+        var oldPasswordHash = user.PasswordHash;
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+        user.PasswordLastChangedAt = DateTime.UtcNow;
+        user.PasswordMustBeChanged = false;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _userRepository.UpdateAsync(user);
+
+        await _passwordHistoryRepository.AddAsync(userId.Value, user.PasswordHash);
+
+        await _userSessionService.RevokeAllSessionsAsync(userId.Value);
+
+        var ipAddress = GetClientIpAddress();
+        var userAgent = _httpContextAccessor.HttpContext?.Request.Headers["User-Agent"].ToString();
+
+        await _systemLogService.LogInformationAsync(
+            "PasswordChanged",
+            $"用户 {user.Username} 修改了密码",
+            user.Id,
+            user.Username,
+            ipAddress: ipAddress,
+            userAgent: userAgent);
+
+        return ApiResponse.Success("密码修改成功，请重新登录");
+    }
+
+    /// <summary>
     /// 获取当前用户ID
     /// </summary>
     /// <returns>用户ID，未登录返回null</returns>
@@ -360,5 +475,57 @@ public class AuthService : IAuthService
         }
 
         return context.Connection.RemoteIpAddress?.ToString();
+    }
+
+    /// <summary>
+    /// 生成密码安全提示
+    /// </summary>
+    private string? GeneratePasswordSecurityTip(
+        int passwordStrength,
+        bool needsUpgrade,
+        bool isPasswordExpired,
+        DateTime? passwordLastChangedAt)
+    {
+        if (isPasswordExpired)
+        {
+            return $"您的密码已过期，请尽快修改密码以确保账户安全。";
+        }
+
+        if (needsUpgrade)
+        {
+            var strengthDesc = _passwordPolicyService.GetStrengthDescription(passwordStrength);
+            return $"当前密码强度为「{strengthDesc}」，建议设置更复杂的密码以提升账户安全性。";
+        }
+
+        if (passwordLastChangedAt.HasValue)
+        {
+            var daysSinceChanged = (DateTime.UtcNow - passwordLastChangedAt.Value).TotalDays;
+            var daysUntilExpiry = AppConstants.PasswordPolicy.PasswordExpiryDays - daysSinceChanged;
+
+            if (daysUntilExpiry <= 7 && daysUntilExpiry > 0)
+            {
+                return $"您的密码将在 {Math.Ceiling(daysUntilExpiry)} 天后过期，请及时更新。";
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// 获取密码升级提示（注册时使用）
+    /// </summary>
+    private string? GetPasswordUpgradeTip(PasswordValidationResult validationResult)
+    {
+        if (validationResult.StrengthScore >= 4)
+        {
+            return null;
+        }
+
+        if (validationResult.Tips.Count > 0)
+        {
+            return $"密码强度：{validationResult.StrengthDescription}。提示：{string.Join("；", validationResult.Tips.Take(2))}";
+        }
+
+        return $"密码强度：{validationResult.StrengthDescription}。";
     }
 }
