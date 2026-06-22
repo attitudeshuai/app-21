@@ -86,7 +86,7 @@ public class MaterialService : IMaterialService
         }
 
         await _materialRepository.IncrementViewCountAsync(id);
-        material.ViewCount += 1;
+        material = await _materialRepository.GetByIdAsync(id);
 
         var materialResponse = _mapper.Map<MaterialResponse>(material);
         return ApiResponse<MaterialResponse>.Success(materialResponse, "获取成功");

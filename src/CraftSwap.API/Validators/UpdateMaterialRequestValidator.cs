@@ -29,6 +29,7 @@ public class UpdateMaterialRequestValidator : AbstractValidator<UpdateMaterialRe
             .Must(x => x == null || x.Count <= 20).WithMessage("图片数量不能超过20张");
 
         RuleForEach(x => x.ImageUrls!)
+            .NotEmpty().WithMessage("图片URL不能为空")
             .MaximumLength(500).WithMessage("图片URL长度不能超过500个字符")
             .When(x => x.ImageUrls != null && x.ImageUrls.Count > 0);
 
@@ -36,7 +37,12 @@ public class UpdateMaterialRequestValidator : AbstractValidator<UpdateMaterialRe
             .Must(x => x == null || x.Count <= 10).WithMessage("标签数量不能超过10个");
 
         RuleForEach(x => x.Tags!)
+            .NotEmpty().WithMessage("标签内容不能为空")
             .MaximumLength(30).WithMessage("单个标签长度不能超过30个字符")
+            .When(x => x.Tags != null && x.Tags.Count > 0);
+
+        RuleFor(x => x.Tags)
+            .Must(x => x == null || string.Join(',', x).Length <= 500).WithMessage("标签总长度不能超过500个字符")
             .When(x => x.Tags != null && x.Tags.Count > 0);
     }
 }
