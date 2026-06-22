@@ -61,21 +61,24 @@ public class MappingProfile : Profile
     private void CreateMaterialMaps()
     {
         CreateMap<Material, MaterialResponse>()
-            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Name))
-            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Condition))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Title) ? src.Title : src.Name))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Description) ? src.Description : src.Condition))
             .ForMember(dest => dest.ImageUrls, opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Photos) ? new List<string>() : src.Photos.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()))
-            .ForMember(dest => dest.Tags, opt => opt.Ignore())
+            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Tags) ? new List<string>() : src.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()))
             .ForMember(dest => dest.OwnerId, opt => opt.MapFrom(src => src.OwnerId.ToString()))
             .ForMember(dest => dest.OwnerUsername, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.Username : string.Empty))
-            .ForMember(dest => dest.OwnerAvatarUrl, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.Avatar : null))
-            .ForMember(dest => dest.ViewCount, opt => opt.Ignore())
-            .ForMember(dest => dest.FavoriteCount, opt => opt.Ignore())
-            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
+            .ForMember(dest => dest.OwnerAvatarUrl, opt => opt.MapFrom(src => src.Owner != null ? src.Owner.Avatar : null));
 
         CreateMap<CreateMaterialRequest, Material>()
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
             .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Title))
-            .ForMember(dest => dest.Condition, opt => opt.MapFrom(src => src.Description ?? string.Empty))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description))
+            .ForMember(dest => dest.Condition, opt => opt.MapFrom(src => !string.IsNullOrEmpty(src.Description) ? (src.Description.Length > 50 ? src.Description.Substring(0, 50) : src.Description) : string.Empty))
+            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Count > 0 ? string.Join(',', src.Tags) : null))
             .ForMember(dest => dest.Photos, opt => opt.MapFrom(src => src.ImageUrls != null && src.ImageUrls.Count > 0 ? string.Join(',', src.ImageUrls) : null))
+            .ForMember(dest => dest.ViewCount, opt => opt.MapFrom(src => 0))
+            .ForMember(dest => dest.FavoriteCount, opt => opt.MapFrom(src => 0))
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.OwnerId, opt => opt.Ignore())
             .ForMember(dest => dest.Status, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
@@ -88,12 +91,19 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.Unit, opt => opt.Ignore());
 
         CreateMap<UpdateMaterialRequest, Material>()
+            .ForMember(dest => dest.Title, opt => opt.Condition(src => src.Title != null))
+            .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title!))
             .ForMember(dest => dest.Name, opt => opt.Condition(src => src.Title != null))
             .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Title!))
+            .ForMember(dest => dest.Description, opt => opt.Condition(src => src.Description != null))
+            .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description!))
             .ForMember(dest => dest.Condition, opt => opt.Condition(src => src.Description != null))
-            .ForMember(dest => dest.Condition, opt => opt.MapFrom(src => src.Description!))
+            .ForMember(dest => dest.Condition, opt => opt.MapFrom(src => src.Description!.Length > 50 ? src.Description.Substring(0, 50) : src.Description))
+            .ForMember(dest => dest.Tags, opt => opt.Condition(src => src.Tags != null))
+            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Count > 0 ? string.Join(',', src.Tags) : null))
             .ForMember(dest => dest.Photos, opt => opt.Condition(src => src.ImageUrls != null))
             .ForMember(dest => dest.Photos, opt => opt.MapFrom(src => src.ImageUrls != null && src.ImageUrls.Count > 0 ? string.Join(',', src.ImageUrls) : null))
+            .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
     }
 

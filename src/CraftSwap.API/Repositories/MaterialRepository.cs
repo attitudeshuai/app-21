@@ -42,6 +42,7 @@ public class MaterialRepository : Repository<Material>, IMaterialRepository
     /// <param name="ownerId">所有者ID</param>
     /// <param name="sortBy">排序字段</param>
     /// <param name="sortDirection">排序方向</param>
+    /// <param name="tag">标签筛选</param>
     /// <returns>分页后的材料列表和总数</returns>
     public async Task<(IEnumerable<Material> Items, int TotalCount)> GetPagedWithFiltersAsync(
         int pageNumber,
@@ -52,18 +53,22 @@ public class MaterialRepository : Repository<Material>, IMaterialRepository
         string? status = null,
         int? ownerId = null,
         string? sortBy = null,
-        string? sortDirection = null)
+        string? sortDirection = null,
+        string? tag = null)
     {
         var query = _dbSet.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(searchKeyword))
         {
             query = query.Where(m =>
+                (m.Title != null && m.Title.Contains(searchKeyword)) ||
+                (m.Description != null && m.Description.Contains(searchKeyword)) ||
                 m.Name.Contains(searchKeyword) ||
                 m.Condition.Contains(searchKeyword) ||
                 m.Category.Contains(searchKeyword) ||
                 m.MaterialType.Contains(searchKeyword) ||
-                m.Color.Contains(searchKeyword));
+                m.Color.Contains(searchKeyword) ||
+                (m.Tags != null && m.Tags.Contains(searchKeyword)));
         }
 
         if (!string.IsNullOrWhiteSpace(category))
@@ -86,6 +91,11 @@ public class MaterialRepository : Repository<Material>, IMaterialRepository
             query = query.Where(m => m.OwnerId == ownerId.Value);
         }
 
+        if (!string.IsNullOrWhiteSpace(tag))
+        {
+            query = query.Where(m => m.Tags != null && m.Tags.Contains(tag));
+        }
+
         var totalCount = await query.CountAsync();
 
         query = ApplySorting(query, sortBy ?? "CreatedAt", sortDirection ?? "desc");
@@ -96,6 +106,27 @@ public class MaterialRepository : Repository<Material>, IMaterialRepository
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    /// <summary>
+    /// 增加材料浏览数
+    /// </summary>
+    /// <param name="id">材料ID</param>
+    /// <returns>是否成功</returns>
+    public async Task<bool> IncrementViewCountAsync(int id)
+    {
+        var material = await _dbSet.FindAsync(id);
+        if (material == null)
+        {
+            return false;
+        }
+
+        material.ViewCount += 1;
+        material.UpdatedAt = DateTime.UtcNow;
+        _context.Entry(material).Property(m => m.ViewCount).IsModified = true;
+        _context.Entry(material).Property(m => m.UpdatedAt).IsModified = true;
+        await _context.SaveChangesAsync();
+        return true;
     }
 
     /// <summary>

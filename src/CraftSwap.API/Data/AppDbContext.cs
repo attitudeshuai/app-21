@@ -145,6 +145,9 @@ public class AppDbContext : DbContext
             entity.HasIndex(m => m.Category);
             entity.HasIndex(m => m.Status);
             entity.HasIndex(m => m.OwnerId);
+            entity.HasIndex(m => m.ViewCount);
+            entity.HasIndex(m => m.FavoriteCount);
+            entity.HasIndex(m => m.CreatedAt);
 
             entity.HasMany(m => m.OfferedInRequests)
                   .WithOne(s => s.OfferedMaterial)
@@ -300,6 +303,9 @@ public class AppDbContext : DbContext
             {
                 Id = 1,
                 OwnerId = 2,
+                Title = "优质红色羊毛线",
+                Description = "500克装优质100%纯羊毛线，色泽鲜艳，手感柔软，适合编织围巾、毛衣等冬季保暖用品。全新未拆封，附编织教程一份。",
+                Tags = "羊毛,红色,毛线,冬季,保暖",
                 Name = "红色羊毛线",
                 Category = "毛线",
                 Color = "红色",
@@ -309,12 +315,17 @@ public class AppDbContext : DbContext
                 Condition = "全新",
                 Photos = "https://example.com/materials/1.jpg",
                 Status = AppConstants.MaterialStatus.Available,
+                ViewCount = 128,
+                FavoriteCount = 15,
                 CreatedAt = now
             },
             new Material
             {
                 Id = 2,
                 OwnerId = 2,
+                Title = "蓝色纯棉布料",
+                Description = "5米长高品质蓝色纯棉布料，幅宽1.5米，质地厚实透气，适合制作衬衫、连衣裙等夏季服装。仅使用过一小段，剩余约4.8米。",
+                Tags = "纯棉,蓝色,布料,夏季,透气",
                 Name = "蓝色棉布",
                 Category = "布料",
                 Color = "蓝色",
@@ -324,12 +335,17 @@ public class AppDbContext : DbContext
                 Condition = "九成新",
                 Photos = "https://example.com/materials/2.jpg",
                 Status = AppConstants.MaterialStatus.Available,
+                ViewCount = 86,
+                FavoriteCount = 9,
                 CreatedAt = now.AddHours(2)
             },
             new Material
             {
                 Id = 3,
                 OwnerId = 3,
+                Title = "高档绿色真丝面料",
+                Description = "3米重磅真丝面料，16姆米厚度，光泽度极佳，手感丝滑。适合制作旗袍、丝巾等高档服饰。保存完好，无污渍无破损。",
+                Tags = "丝绸,绿色,真丝,高档,礼服",
                 Name = "绿色丝绸",
                 Category = "布料",
                 Color = "绿色",
@@ -339,12 +355,17 @@ public class AppDbContext : DbContext
                 Condition = "全新",
                 Photos = "https://example.com/materials/3.jpg",
                 Status = AppConstants.MaterialStatus.Available,
+                ViewCount = 256,
+                FavoriteCount = 32,
                 CreatedAt = now.AddHours(4)
             },
             new Material
             {
                 Id = 4,
                 OwnerId = 3,
+                Title = "黄色树脂纽扣套装",
+                Description = "100颗高品质树脂纽扣，直径15mm和20mm各50颗，颜色均匀有光泽。附带精美收纳盒，适合各种手工服装制作。",
+                Tags = "纽扣,黄色,配件,树脂,套装",
                 Name = "黄色纽扣套装",
                 Category = "配件",
                 Color = "黄色",
@@ -354,12 +375,17 @@ public class AppDbContext : DbContext
                 Condition = "全新",
                 Photos = "https://example.com/materials/4.jpg",
                 Status = AppConstants.MaterialStatus.Available,
+                ViewCount = 45,
+                FavoriteCount = 7,
                 CreatedAt = now.AddHours(6)
             },
             new Material
             {
                 Id = 5,
                 OwnerId = 4,
+                Title = "紫色精美蕾丝花边",
+                Description = "10米长高品质紫色蕾丝花边，宽度5cm，花纹精致典雅。适合装饰连衣裙、婚纱、家纺等，弹性好不易变形。",
+                Tags = "蕾丝,紫色,配件,花边,装饰",
                 Name = "紫色蕾丝边",
                 Category = "配件",
                 Color = "紫色",
@@ -369,12 +395,17 @@ public class AppDbContext : DbContext
                 Condition = "全新",
                 Photos = "https://example.com/materials/5.jpg",
                 Status = AppConstants.MaterialStatus.Available,
+                ViewCount = 178,
+                FavoriteCount = 23,
                 CreatedAt = now.AddHours(8)
             },
             new Material
             {
                 Id = 6,
                 OwnerId = 4,
+                Title = "白色腈纶毛线",
+                Description = "300克白色腈纶毛线，不起球不褪色，易护理。适合初学者练手，可编织小挂件、玩偶、围巾等。剩余八成新，约250克可用。",
+                Tags = "腈纶,白色,毛线,新手,玩偶",
                 Name = "白色毛线",
                 Category = "毛线",
                 Color = "白色",
@@ -384,12 +415,17 @@ public class AppDbContext : DbContext
                 Condition = "八成新",
                 Photos = "https://example.com/materials/6.jpg",
                 Status = AppConstants.MaterialStatus.Available,
+                ViewCount = 62,
+                FavoriteCount = 5,
                 CreatedAt = now.AddHours(10)
             },
             new Material
             {
                 Id = 7,
                 OwnerId = 2,
+                Title = "黑色头层牛皮皮革",
+                Description = "2平方尺头层牛皮，厚度1.2-1.4mm，质地柔软有韧性。适合制作钱包、卡包、表带等手工皮具。皮面光滑无瑕疵。",
+                Tags = "皮革,黑色,牛皮,手工,皮具",
                 Name = "黑色皮革",
                 Category = "皮革",
                 Color = "黑色",
@@ -399,12 +435,17 @@ public class AppDbContext : DbContext
                 Condition = "全新",
                 Photos = "https://example.com/materials/7.jpg",
                 Status = AppConstants.MaterialStatus.Available,
+                ViewCount = 312,
+                FavoriteCount = 41,
                 CreatedAt = now.AddDays(1)
             },
             new Material
             {
                 Id = 8,
                 OwnerId = 3,
+                Title = "粉色缎面绸缎",
+                Description = "4米粉色绸缎面料，光泽柔和，垂感好，适合制作汉服、襦裙、伴娘服等。已使用约0.5米，剩余3.5米，边角略有裁剪痕迹。",
+                Tags = "绸缎,粉色,汉服,礼服,光泽",
                 Name = "粉色绸缎",
                 Category = "布料",
                 Color = "粉色",
@@ -414,12 +455,17 @@ public class AppDbContext : DbContext
                 Condition = "九成新",
                 Photos = "https://example.com/materials/8.jpg",
                 Status = AppConstants.MaterialStatus.Swapped,
+                ViewCount = 198,
+                FavoriteCount = 28,
                 CreatedAt = now.AddDays(1).AddHours(2)
             },
             new Material
             {
                 Id = 9,
                 OwnerId = 4,
+                Title = "金色金属拉链",
+                Description = "50条高档金色金属拉链，长度20cm，顺滑不卡齿。YKK品质，适合制作外套、包包、裙子等。独立包装，全新未使用。",
+                Tags = "拉链,金色,金属,配件,YKK",
                 Name = "金色拉链",
                 Category = "配件",
                 Color = "金色",
@@ -429,12 +475,17 @@ public class AppDbContext : DbContext
                 Condition = "全新",
                 Photos = "https://example.com/materials/9.jpg",
                 Status = AppConstants.MaterialStatus.Available,
+                ViewCount = 73,
+                FavoriteCount = 11,
                 CreatedAt = now.AddDays(1).AddHours(4)
             },
             new Material
             {
                 Id = 10,
                 OwnerId = 2,
+                Title = "灰色加厚帆布",
+                Description = "6米加厚灰色帆布，380g重磅面料，耐磨耐用，适合制作背包、帆布鞋、坐垫等。因项目剩余，约六成可用，边角有少量污渍。",
+                Tags = "帆布,灰色,加厚,耐磨,背包",
                 Name = "灰色帆布",
                 Category = "布料",
                 Color = "灰色",
@@ -444,6 +495,8 @@ public class AppDbContext : DbContext
                 Condition = "七成新",
                 Photos = "https://example.com/materials/10.jpg",
                 Status = AppConstants.MaterialStatus.Offline,
+                ViewCount = 41,
+                FavoriteCount = 3,
                 CreatedAt = now.AddDays(2)
             }
         };

@@ -56,7 +56,8 @@ public class MaterialService : IMaterialService
             parameters.Status,
             ownerId,
             parameters.SortBy,
-            parameters.SortDirection);
+            parameters.SortDirection,
+            parameters.Tag);
         var materialResponses = _mapper.Map<List<MaterialResponse>>(materials);
 
         var pagedResponse = new PagedResponse<MaterialResponse>
@@ -83,6 +84,9 @@ public class MaterialService : IMaterialService
         {
             return ApiResponse<MaterialResponse>.Fail("材料不存在", 404);
         }
+
+        await _materialRepository.IncrementViewCountAsync(id);
+        material.ViewCount += 1;
 
         var materialResponse = _mapper.Map<MaterialResponse>(material);
         return ApiResponse<MaterialResponse>.Success(materialResponse, "获取成功");
@@ -240,7 +244,8 @@ public class MaterialService : IMaterialService
             parameters.Status,
             userId.Value,
             parameters.SortBy,
-            parameters.SortDirection);
+            parameters.SortDirection,
+            parameters.Tag);
         var materialResponses = _mapper.Map<List<MaterialResponse>>(materials);
 
         var pagedResponse = new PagedResponse<MaterialResponse>

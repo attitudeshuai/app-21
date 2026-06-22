@@ -26,6 +26,7 @@ public interface IMaterialRepository : IRepository<Material>
     /// <param name="ownerId">所有者ID</param>
     /// <param name="sortBy">排序字段</param>
     /// <param name="sortDirection">排序方向</param>
+    /// <param name="tag">标签筛选</param>
     /// <returns>分页后的材料列表和总数</returns>
     Task<(IEnumerable<Material> Items, int TotalCount)> GetPagedWithFiltersAsync(
         int pageNumber,
@@ -36,7 +37,15 @@ public interface IMaterialRepository : IRepository<Material>
         string? status = null,
         int? ownerId = null,
         string? sortBy = null,
-        string? sortDirection = null);
+        string? sortDirection = null,
+        string? tag = null);
+
+    /// <summary>
+    /// 增加材料浏览数
+    /// </summary>
+    /// <param name="id">材料ID</param>
+    /// <returns>是否成功</returns>
+    Task<bool> IncrementViewCountAsync(int id);
 
     /// <summary>
     /// 根据日期范围获取材料数量

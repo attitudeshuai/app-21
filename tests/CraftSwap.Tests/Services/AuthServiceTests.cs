@@ -20,6 +20,7 @@ public class AuthServiceTests
     private readonly Mock<ITokenValidatorService> _mockTokenValidatorService;
     private readonly Mock<ITokenGeneratorService> _mockTokenGeneratorService;
     private readonly Mock<IUserSessionService> _mockUserSessionService;
+    private readonly Mock<ISystemLogService> _mockSystemLogService;
     private readonly Mock<IRefreshTokenRepository> _mockRefreshTokenRepository;
     private readonly AuthService _authService;
     private readonly JwtSettings _jwtSettings;
@@ -32,6 +33,7 @@ public class AuthServiceTests
         _mockTokenValidatorService = new Mock<ITokenValidatorService>();
         _mockTokenGeneratorService = new Mock<ITokenGeneratorService>();
         _mockUserSessionService = new Mock<IUserSessionService>();
+        _mockSystemLogService = new Mock<ISystemLogService>();
         _mockRefreshTokenRepository = new Mock<IRefreshTokenRepository>();
 
         _jwtSettings = new JwtSettings
@@ -51,7 +53,8 @@ public class AuthServiceTests
             _mockHttpContextAccessor.Object,
             _mockTokenValidatorService.Object,
             _mockTokenGeneratorService.Object,
-            _mockUserSessionService.Object);
+            _mockUserSessionService.Object,
+            _mockSystemLogService.Object);
     }
 
     [Fact]
