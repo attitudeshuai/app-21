@@ -50,4 +50,6 @@ public interface ISwapReviewRepository : IRepository<SwapReview>
     /// <param name="reviewerId">评价人ID</param>
     /// <returns>评价对象</returns>
     Task<SwapReview?> GetByRequestIdAndReviewerIdAsync(int requestId, int reviewerId);
+
+    Task<(decimal AverageRating, int TotalCount)> GetReviewStatsByRevieweeIdAsync(int revieweeId);
 }

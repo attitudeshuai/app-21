@@ -49,4 +49,8 @@ public class UserResponse
     /// 角色
     /// </summary>
     public string Role { get; set; } = string.Empty;
+
+    public decimal AverageRating { get; set; }
+
+    public int TotalReviewCount { get; set; }
 }

@@ -36,7 +36,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.AvatarUrl, opt => opt.MapFrom(src => src.Avatar))
             .ForMember(dest => dest.Bio, opt => opt.Ignore())
             .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt))
-            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role));
+            .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.Role))
+            .ForMember(dest => dest.AverageRating, opt => opt.MapFrom(src => src.AverageRating))
+            .ForMember(dest => dest.TotalReviewCount, opt => opt.MapFrom(src => src.TotalReviewCount));
 
         CreateMap<RegisterRequest, User>()
             .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
@@ -48,7 +50,9 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ReceivedSwapRequests, opt => opt.Ignore())
             .ForMember(dest => dest.GivenReviews, opt => opt.Ignore())
             .ForMember(dest => dest.ReceivedReviews, opt => opt.Ignore())
-            .ForMember(dest => dest.ProjectShowcases, opt => opt.Ignore());
+            .ForMember(dest => dest.ProjectShowcases, opt => opt.Ignore())
+            .ForMember(dest => dest.AverageRating, opt => opt.Ignore())
+            .ForMember(dest => dest.TotalReviewCount, opt => opt.Ignore());
 
         CreateMap<UpdateProfileRequest, User>()
             .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.AvatarUrl))

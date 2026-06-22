@@ -254,6 +254,8 @@ public class AppDbContext : DbContext
                 Avatar = "https://example.com/avatars/admin.jpg",
                 Role = AppConstants.UserRoles.Admin,
                 IsLocked = false,
+                AverageRating = 0m,
+                TotalReviewCount = 0,
                 CreatedAt = now,
                 UpdatedAt = now
             },
@@ -266,6 +268,8 @@ public class AppDbContext : DbContext
                 Avatar = "https://example.com/avatars/zhangsan.jpg",
                 Role = AppConstants.UserRoles.User,
                 IsLocked = false,
+                AverageRating = 0m,
+                TotalReviewCount = 0,
                 CreatedAt = now.AddHours(1),
                 UpdatedAt = now.AddHours(1)
             },
@@ -278,6 +282,8 @@ public class AppDbContext : DbContext
                 Avatar = "https://example.com/avatars/lisi.jpg",
                 Role = AppConstants.UserRoles.User,
                 IsLocked = false,
+                AverageRating = 4.00m,
+                TotalReviewCount = 1,
                 CreatedAt = now.AddDays(1),
                 UpdatedAt = now.AddDays(1)
             },
@@ -290,6 +296,8 @@ public class AppDbContext : DbContext
                 Avatar = "https://example.com/avatars/wangwu.jpg",
                 Role = AppConstants.UserRoles.User,
                 IsLocked = false,
+                AverageRating = 5.00m,
+                TotalReviewCount = 1,
                 CreatedAt = now.AddDays(2),
                 UpdatedAt = now.AddDays(2)
             }

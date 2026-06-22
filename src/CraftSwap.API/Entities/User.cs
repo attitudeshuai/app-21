@@ -78,9 +78,11 @@ public class User
     [Required]
     public DateTime UpdatedAt { get; set; }
 
-    /// <summary>
-    /// 用户发布的材料列表
-    /// </summary>
+    [Column(TypeName = "decimal(5,2)")]
+    public decimal AverageRating { get; set; }
+
+    public int TotalReviewCount { get; set; }
+
     public ICollection<Material> Materials { get; set; } = new List<Material>();
 
     /// <summary>

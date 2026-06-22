@@ -109,4 +109,20 @@ public class SwapReviewRepository : Repository<SwapReview>, ISwapReviewRepositor
     {
         return await _dbSet.FirstOrDefaultAsync(r => r.RequestId == requestId && r.ReviewerId == reviewerId);
     }
+
+    public async Task<(decimal AverageRating, int TotalCount)> GetReviewStatsByRevieweeIdAsync(int revieweeId)
+    {
+        var stats = await _dbSet
+            .Where(r => r.RevieweeId == revieweeId)
+            .GroupBy(r => r.RevieweeId)
+            .Select(g => new { AverageRating = g.Average(r => r.Rating), TotalCount = g.Count() })
+            .FirstOrDefaultAsync();
+
+        if (stats == null)
+        {
+            return (0m, 0);
+        }
+
+        return (Math.Round((decimal)stats.AverageRating, 2), stats.TotalCount);
+    }
 }

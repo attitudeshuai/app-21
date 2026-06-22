@@ -143,4 +143,16 @@ public class UserRepository : Repository<User>, IUserRepository
 
         return true;
     }
+
+    public async Task UpdateReviewStatsAsync(int userId, decimal averageRating, int totalReviewCount)
+    {
+        var user = await _dbSet.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null) return;
+
+        user.AverageRating = averageRating;
+        user.TotalReviewCount = totalReviewCount;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+    }
 }

@@ -57,4 +57,6 @@ public interface IUserRepository : IRepository<User>
     /// <param name="userId">用户ID</param>
     /// <returns>是否被锁定</returns>
     Task<bool> IsUserLockedAsync(int userId);
+
+    Task UpdateReviewStatsAsync(int userId, decimal averageRating, int totalReviewCount);
 }
