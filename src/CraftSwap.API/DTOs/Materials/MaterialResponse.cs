@@ -16,9 +16,19 @@ public class MaterialResponse
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
+    /// 高亮后的标题（包含高亮标签）
+    /// </summary>
+    public string? HighlightedTitle { get; set; }
+
+    /// <summary>
     /// 描述
     /// </summary>
     public string? Description { get; set; }
+
+    /// <summary>
+    /// 高亮后的描述（包含高亮标签）
+    /// </summary>
+    public string? HighlightedDescription { get; set; }
 
     /// <summary>
     /// 分类
@@ -39,6 +49,11 @@ public class MaterialResponse
     /// 标签
     /// </summary>
     public List<string> Tags { get; set; } = new List<string>();
+
+    /// <summary>
+    /// 高亮后的标签列表（包含高亮标签）
+    /// </summary>
+    public List<string>? HighlightedTags { get; set; }
 
     /// <summary>
     /// 发布者ID
@@ -64,6 +79,11 @@ public class MaterialResponse
     /// 收藏次数
     /// </summary>
     public int FavoriteCount { get; set; }
+
+    /// <summary>
+    /// 相关性分数（仅在有关键词搜索时返回）
+    /// </summary>
+    public double? RelevanceScore { get; set; }
 
     /// <summary>
     /// 创建时间

@@ -11,12 +11,14 @@ namespace CraftSwap.Services;
 
 /// <summary>
 /// 材料服务实现
+/// 负责业务逻辑编排，整合条件解析、数据查询和结果组装三层
 /// </summary>
 public class MaterialService : IMaterialService
 {
     private readonly IMaterialRepository _materialRepository;
     private readonly IMapper _mapper;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IHighlightService _highlightService;
 
     /// <summary>
     /// 构造函数
@@ -24,52 +26,90 @@ public class MaterialService : IMaterialService
     /// <param name="materialRepository">材料仓储</param>
     /// <param name="mapper">对象映射器</param>
     /// <param name="httpContextAccessor">HTTP上下文访问器</param>
+    /// <param name="highlightService">关键词高亮服务</param>
     public MaterialService(
         IMaterialRepository materialRepository,
         IMapper mapper,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IHighlightService highlightService)
     {
         _materialRepository = materialRepository;
         _mapper = mapper;
         _httpContextAccessor = httpContextAccessor;
+        _highlightService = highlightService;
     }
 
     /// <summary>
-    /// 分页获取材料列表
+    /// 分页获取材料列表（使用高级搜索）
     /// </summary>
     /// <param name="parameters">查询参数</param>
     /// <returns>分页材料响应</returns>
     public async Task<ApiResponse<PagedResponse<MaterialResponse>>> GetPagedAsync(MaterialQueryParameters parameters)
     {
-        int? ownerId = null;
-        if (!string.IsNullOrWhiteSpace(parameters.OwnerId) && int.TryParse(parameters.OwnerId, out var parsedOwnerId))
-        {
-            ownerId = parsedOwnerId;
-        }
+        return await AdvancedSearchAsync(parameters);
+    }
 
-        var (materials, totalCount) = await _materialRepository.GetPagedWithFiltersAsync(
-            parameters.PageNumber,
-            parameters.PageSize,
-            parameters.SearchKeyword,
-            parameters.Category,
-            null,
-            parameters.Status,
-            ownerId,
-            parameters.SortBy,
-            parameters.SortDirection,
-            parameters.Tag);
-        var materialResponses = _mapper.Map<List<MaterialResponse>>(materials);
+    /// <summary>
+    /// 高级搜索材料（支持所有筛选条件、相关性排序、关键词高亮）
+    /// 三层架构：条件解析 -> 数据查询 -> 结果组装
+    /// </summary>
+    /// <param name="parameters">查询参数</param>
+    /// <returns>分页材料响应（含高亮和相关性分数）</returns>
+    public async Task<ApiResponse<PagedResponse<MaterialResponse>>> AdvancedSearchAsync(MaterialQueryParameters parameters)
+    {
+        var filter = MaterialSearchFilter.Parse(parameters);
+
+        var (searchResults, totalCount) = await _materialRepository.AdvancedSearchAsync(filter);
+
+        var materialResponses = AssembleSearchResults(searchResults, filter);
 
         var pagedResponse = new PagedResponse<MaterialResponse>
         {
             Items = materialResponses,
             TotalCount = totalCount,
-            PageNumber = parameters.PageNumber,
-            PageSize = parameters.PageSize,
-            TotalPages = (int)Math.Ceiling((double)totalCount / parameters.PageSize)
+            PageNumber = filter.PageNumber,
+            PageSize = filter.PageSize,
+            TotalPages = (int)Math.Ceiling((double)totalCount / filter.PageSize)
         };
 
         return ApiResponse<PagedResponse<MaterialResponse>>.Success(pagedResponse, "获取成功");
+    }
+
+    /// <summary>
+    /// 结果组装层：将搜索结果转换为响应DTO，应用高亮和相关性分数
+    /// </summary>
+    /// <param name="searchResults">搜索结果（含相关性分数）</param>
+    /// <param name="filter">搜索条件过滤器</param>
+    /// <returns>材料响应列表</returns>
+    private List<MaterialResponse> AssembleSearchResults(
+        IEnumerable<MaterialSearchResult> searchResults,
+        MaterialSearchFilter filter)
+    {
+        var responses = new List<MaterialResponse>();
+
+        foreach (var result in searchResults)
+        {
+            var response = _mapper.Map<MaterialResponse>(result.Material);
+            response.RelevanceScore = result.RelevanceScore;
+
+            if (filter.EnableHighlight && filter.HasSearchKeyword)
+            {
+                var keyword = filter.SearchKeyword;
+                var preTag = filter.HighlightPreTag;
+                var postTag = filter.HighlightPostTag;
+
+                response.HighlightedTitle = _highlightService.Highlight(
+                    response.Title, keyword, preTag, postTag);
+                response.HighlightedDescription = _highlightService.Highlight(
+                    response.Description, keyword, preTag, postTag);
+                response.HighlightedTags = _highlightService.HighlightTags(
+                    response.Tags, keyword, preTag, postTag);
+            }
+
+            responses.Add(response);
+        }
+
+        return responses;
     }
 
     /// <summary>
@@ -235,29 +275,9 @@ public class MaterialService : IMaterialService
             return ApiResponse<PagedResponse<MaterialResponse>>.Fail("用户未登录", 401);
         }
 
-        var (materials, totalCount) = await _materialRepository.GetPagedWithFiltersAsync(
-            parameters.PageNumber,
-            parameters.PageSize,
-            parameters.SearchKeyword,
-            parameters.Category,
-            null,
-            parameters.Status,
-            userId.Value,
-            parameters.SortBy,
-            parameters.SortDirection,
-            parameters.Tag);
-        var materialResponses = _mapper.Map<List<MaterialResponse>>(materials);
+        parameters.OwnerId = userId.Value.ToString();
 
-        var pagedResponse = new PagedResponse<MaterialResponse>
-        {
-            Items = materialResponses,
-            TotalCount = totalCount,
-            PageNumber = parameters.PageNumber,
-            PageSize = parameters.PageSize,
-            TotalPages = (int)Math.Ceiling((double)totalCount / parameters.PageSize)
-        };
-
-        return ApiResponse<PagedResponse<MaterialResponse>>.Success(pagedResponse, "获取成功");
+        return await AdvancedSearchAsync(parameters);
     }
 
     /// <summary>

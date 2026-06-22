@@ -16,6 +16,7 @@ public class MaterialServiceTests
     private readonly Mock<IMaterialRepository> _mockMaterialRepository;
     private readonly Mock<IMapper> _mockMapper;
     private readonly Mock<IHttpContextAccessor> _mockHttpContextAccessor;
+    private readonly Mock<IHighlightService> _mockHighlightService;
     private readonly MaterialService _materialService;
     private readonly int _ownerId;
 
@@ -24,12 +25,14 @@ public class MaterialServiceTests
         _mockMaterialRepository = new Mock<IMaterialRepository>();
         _mockMapper = new Mock<IMapper>();
         _mockHttpContextAccessor = new Mock<IHttpContextAccessor>();
+        _mockHighlightService = new Mock<IHighlightService>();
         _ownerId = 1;
 
         _materialService = new MaterialService(
             _mockMaterialRepository.Object,
             _mockMapper.Object,
-            _mockHttpContextAccessor.Object);
+            _mockHttpContextAccessor.Object,
+            _mockHighlightService.Object);
     }
 
     private void SetupAuthenticatedUser(int userId)
@@ -516,4 +519,501 @@ public class MaterialServiceTests
         result.Code.Should().Be(403);
         result.Message.Should().Be("无权限修改该材料状态");
     }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithMultipleCategories_ShouldFilterByCategories()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            Categories = "毛线,布料",
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Name = "红色毛线", Category = "毛线", CreatedAt = DateTime.UtcNow, OwnerId = _ownerId },
+            new() { Id = 2, Name = "蓝色棉布", Category = "布料", CreatedAt = DateTime.UtcNow.AddHours(-1), OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = null
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.Categories.Count == 2 &&
+            f.Categories.Contains("毛线") &&
+            f.Categories.Contains("布料"))))
+            .ReturnsAsync((searchResults, 2));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Name, Category = m.Category });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(2);
+        result.Data.TotalCount.Should().Be(2);
+
+        _mockMaterialRepository.Verify(x => x.AdvancedSearchAsync(It.IsAny<MaterialSearchFilter>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithMultipleTags_ShouldFilterByAllTags()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            Tags = "羊毛,红色",
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Name = "红色羊毛线", Category = "毛线", Tags = "羊毛,红色,保暖", CreatedAt = DateTime.UtcNow, OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = null
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.Tags.Count == 2 &&
+            f.Tags.Contains("羊毛") &&
+            f.Tags.Contains("红色"))))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Name, Category = m.Category });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithDateRange_ShouldFilterByDateRange()
+    {
+        var startDate = new DateTime(2024, 1, 1);
+        var endDate = new DateTime(2024, 12, 31);
+
+        var parameters = new MaterialQueryParameters
+        {
+            StartDate = startDate,
+            EndDate = endDate,
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Name = "红色毛线", Category = "毛线", CreatedAt = new DateTime(2024, 6, 1), OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = null
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.StartDate == startDate &&
+            f.EndDate == endDate)))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Name, Category = m.Category });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithViewCountRange_ShouldFilterByViewCount()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            MinViewCount = 50,
+            MaxViewCount = 200,
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Name = "红色毛线", Category = "毛线", ViewCount = 100, CreatedAt = DateTime.UtcNow, OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = null
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.MinViewCount == 50 &&
+            f.MaxViewCount == 200)))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Name, Category = m.Category, ViewCount = m.ViewCount });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+        result.Data.Items.First().ViewCount.Should().Be(100);
+    }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithFavoriteCountRange_ShouldFilterByFavoriteCount()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            MinFavoriteCount = 10,
+            MaxFavoriteCount = 50,
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Name = "红色毛线", Category = "毛线", FavoriteCount = 25, CreatedAt = DateTime.UtcNow, OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = null
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.MinFavoriteCount == 10 &&
+            f.MaxFavoriteCount == 50)))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Name, Category = m.Category, FavoriteCount = m.FavoriteCount });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+        result.Data.Items.First().FavoriteCount.Should().Be(25);
+    }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithSearchKeyword_ShouldReturnRelevanceScore()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            SearchKeyword = "羊毛",
+            SortByRelevance = true,
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Title = "红色羊毛线", Description = "优质纯羊毛", Category = "毛线", Tags = "羊毛,红色", CreatedAt = DateTime.UtcNow, OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = 95.5
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.SearchKeyword == "羊毛" &&
+            f.ShouldSortByRelevance)))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse
+            {
+                Id = m.Id,
+                Title = m.Title!,
+                Description = m.Description,
+                Category = m.Category,
+                Tags = new List<string> { "羊毛", "红色" }
+            });
+
+        _mockHighlightService.Setup(x => x.Highlight("红色羊毛线", "羊毛", "<em>", "</em>"))
+            .Returns("红色<em>羊毛</em>线");
+
+        _mockHighlightService.Setup(x => x.Highlight("优质纯羊毛", "羊毛", "<em>", "</em>"))
+            .Returns("优质纯<em>羊毛</em>");
+
+        _mockHighlightService.Setup(x => x.HighlightTags(It.IsAny<List<string>>(), "羊毛", "<em>", "</em>"))
+            .Returns(new List<string> { "<em>羊毛</em>", "红色" });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+
+        var item = result.Data.Items.First();
+        item.RelevanceScore.Should().Be(95.5);
+        item.HighlightedTitle.Should().Be("红色<em>羊毛</em>线");
+        item.HighlightedDescription.Should().Be("优质纯<em>羊毛</em>");
+        item.HighlightedTags.Should().BeEquivalentTo(new List<string> { "<em>羊毛</em>", "红色" });
+    }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithCombinedFilters_ShouldApplyAllFilters()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            SearchKeyword = "羊毛",
+            Categories = "毛线",
+            Tags = "红色",
+            MinViewCount = 50,
+            MinFavoriteCount = 10,
+            StartDate = new DateTime(2024, 1, 1),
+            SortBy = "ViewCount",
+            SortDirection = "desc",
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new()
+            {
+                Id = 1,
+                Title = "红色羊毛线",
+                Description = "优质纯羊毛",
+                Category = "毛线",
+                Tags = "羊毛,红色",
+                ViewCount = 128,
+                FavoriteCount = 15,
+                CreatedAt = new DateTime(2024, 6, 1),
+                OwnerId = _ownerId
+            }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = 85.0
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.SearchKeyword == "羊毛" &&
+            f.Categories.Contains("毛线") &&
+            f.Tags.Contains("红色") &&
+            f.MinViewCount == 50 &&
+            f.MinFavoriteCount == 10 &&
+            f.StartDate == new DateTime(2024, 1, 1) &&
+            f.SortBy == "ViewCount" &&
+            f.SortDirection == "desc")))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse
+            {
+                Id = m.Id,
+                Title = m.Title!,
+                Description = m.Description,
+                Category = m.Category,
+                ViewCount = m.ViewCount,
+                FavoriteCount = m.FavoriteCount,
+                Tags = new List<string> { "羊毛", "红色" },
+                CreatedAt = m.CreatedAt
+            });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+        result.Data.TotalCount.Should().Be(1);
+
+        var item = result.Data.Items.First();
+        item.RelevanceScore.Should().Be(85.0);
+        item.ViewCount.Should().Be(128);
+        item.FavoriteCount.Should().Be(15);
+    }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithPagination_ShouldReturnCorrectPage()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            PageNumber = 2,
+            PageSize = 5
+        };
+
+        var materials = Enumerable.Range(1, 20).Select(i => new Material
+        {
+            Id = i,
+            Name = $"材料{i}",
+            Category = "毛线",
+            CreatedAt = DateTime.UtcNow.AddHours(-i),
+            OwnerId = _ownerId
+        }).ToList();
+
+        var searchResults = materials.Skip(5).Take(5).Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = null
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.PageNumber == 2 &&
+            f.PageSize == 5)))
+            .ReturnsAsync((searchResults, 20));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Name, Category = m.Category });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(5);
+        result.Data.TotalCount.Should().Be(20);
+        result.Data.PageNumber.Should().Be(2);
+        result.Data.PageSize.Should().Be(5);
+        result.Data.TotalPages.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task AdvancedSearchAsync_WithHighlightDisabled_ShouldNotReturnHighlightedFields()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            SearchKeyword = "羊毛",
+            EnableHighlight = false,
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Title = "红色羊毛线", Description = "优质纯羊毛", Category = "毛线", CreatedAt = DateTime.UtcNow, OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = 75.0
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.IsAny<MaterialSearchFilter>()))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Title!, Description = m.Description, Category = m.Category });
+
+        var result = await _materialService.AdvancedSearchAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+
+        var item = result.Data!.Items.First();
+        item.HighlightedTitle.Should().BeNull();
+        item.HighlightedDescription.Should().BeNull();
+        item.HighlightedTags.Should().BeNull();
+
+        _mockHighlightService.Verify(x => x.Highlight(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetPagedAsync_ShouldUseAdvancedSearch()
+    {
+        var parameters = new MaterialQueryParameters
+        {
+            Category = "毛线",
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Name = "红色毛线", Category = "毛线", CreatedAt = DateTime.UtcNow, OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = null
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.IsAny<MaterialSearchFilter>()))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Name, Category = m.Category });
+
+        var result = await _materialService.GetPagedAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+
+        _mockMaterialRepository.Verify(x => x.AdvancedSearchAsync(It.IsAny<MaterialSearchFilter>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetMyMaterialsAsync_ShouldFilterByCurrentUser()
+    {
+        SetupAuthenticatedUser(_ownerId);
+
+        var parameters = new MaterialQueryParameters
+        {
+            PageNumber = 1,
+            PageSize = 10
+        };
+
+        var materials = new List<Material>
+        {
+            new() { Id = 1, Name = "红色毛线", Category = "毛线", CreatedAt = DateTime.UtcNow, OwnerId = _ownerId }
+        };
+
+        var searchResults = materials.Select(m => new MaterialSearchResult
+        {
+            Material = m,
+            RelevanceScore = null
+        }).ToList();
+
+        _mockMaterialRepository.Setup(x => x.AdvancedSearchAsync(It.Is<MaterialSearchFilter>(f =>
+            f.OwnerId == _ownerId)))
+            .ReturnsAsync((searchResults, 1));
+
+        _mockMapper.Setup(x => x.Map<MaterialResponse>(It.IsAny<Material>()))
+            .Returns<Material>(m => new MaterialResponse { Id = m.Id, Title = m.Name, Category = m.Category });
+
+        var result = await _materialService.GetMyMaterialsAsync(parameters);
+
+        result.Should().NotBeNull();
+        result.Code.Should().Be(200);
+        result.Data.Should().NotBeNull();
+        result.Data!.Items.Should().HaveCount(1);
+    }
 }
+

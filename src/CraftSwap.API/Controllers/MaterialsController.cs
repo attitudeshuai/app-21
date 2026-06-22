@@ -24,7 +24,7 @@ public class MaterialsController : ControllerBase
     }
 
     /// <summary>
-    /// 获取材料列表（分页、搜索、筛选）
+    /// 获取材料列表（分页、搜索、筛选）- 向后兼容
     /// </summary>
     /// <param name="parameters">查询参数</param>
     /// <returns>分页材料响应</returns>
@@ -32,6 +32,20 @@ public class MaterialsController : ControllerBase
     public async Task<IActionResult> Get([FromQuery] MaterialQueryParameters parameters)
     {
         var response = await _materialService.GetPagedAsync(parameters);
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// 高级搜索材料（支持多条件组合过滤、相关性排序、关键词高亮）
+    /// 支持筛选条件：材料类别、标签、发布时间区间、浏览热度范围、收藏数量范围
+    /// 支持功能：分页、排序、关键词高亮、相关性加权
+    /// </summary>
+    /// <param name="parameters">高级查询参数</param>
+    /// <returns>分页材料响应（含高亮和相关性分数）</returns>
+    [HttpGet("search")]
+    public async Task<IActionResult> AdvancedSearch([FromQuery] MaterialQueryParameters parameters)
+    {
+        var response = await _materialService.AdvancedSearchAsync(parameters);
         return Ok(response);
     }
 

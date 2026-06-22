@@ -16,6 +16,13 @@ public interface IMaterialService
     Task<ApiResponse<PagedResponse<MaterialResponse>>> GetPagedAsync(MaterialQueryParameters parameters);
 
     /// <summary>
+    /// 高级搜索材料（支持所有筛选条件、相关性排序、关键词高亮）
+    /// </summary>
+    /// <param name="parameters">查询参数</param>
+    /// <returns>分页材料响应（含高亮和相关性分数）</returns>
+    Task<ApiResponse<PagedResponse<MaterialResponse>>> AdvancedSearchAsync(MaterialQueryParameters parameters);
+
+    /// <summary>
     /// 根据ID获取材料详情
     /// </summary>
     /// <param name="id">材料ID</param>

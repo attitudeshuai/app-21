@@ -218,5 +218,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPermissionService, PermissionService>();
         services.AddScoped<ISystemLogService, SystemLogService>();
         services.AddScoped<IAdminService, AdminService>();
+        services.AddScoped<IHighlightService, HighlightService>();
     }
 }

@@ -1,6 +1,23 @@
 using CraftSwap.Entities;
+using CraftSwap.Services;
 
 namespace CraftSwap.Repositories;
+
+/// <summary>
+/// 材料搜索结果（包含相关性分数）
+/// </summary>
+public class MaterialSearchResult
+{
+    /// <summary>
+    /// 材料实体
+    /// </summary>
+    public Material Material { get; set; } = null!;
+
+    /// <summary>
+    /// 相关性分数（仅在关键词搜索时有值）
+    /// </summary>
+    public double? RelevanceScore { get; set; }
+}
 
 /// <summary>
 /// 材料仓储接口
@@ -15,7 +32,7 @@ public interface IMaterialRepository : IRepository<Material>
     Task<IEnumerable<Material>> GetByOwnerIdAsync(int ownerId);
 
     /// <summary>
-    /// 分页获取材料（带筛选条件）
+    /// 分页获取材料（带筛选条件）- 向后兼容
     /// </summary>
     /// <param name="pageNumber">页码</param>
     /// <param name="pageSize">每页大小</param>
@@ -39,6 +56,13 @@ public interface IMaterialRepository : IRepository<Material>
         string? sortBy = null,
         string? sortDirection = null,
         string? tag = null);
+
+    /// <summary>
+    /// 高级分页搜索材料（带所有筛选条件和相关性计算）
+    /// </summary>
+    /// <param name="filter">搜索条件过滤器</param>
+    /// <returns>分页后的材料搜索结果列表和总数</returns>
+    Task<(IEnumerable<MaterialSearchResult> Items, int TotalCount)> AdvancedSearchAsync(MaterialSearchFilter filter);
 
     /// <summary>
     /// 增加材料浏览数
