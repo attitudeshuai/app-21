@@ -64,4 +64,21 @@ public interface ISwapRequestRepository : IRepository<SwapRequest>
     /// <param name="endDate">结束日期</param>
     /// <returns>交换请求数量</returns>
     Task<int> GetCountByStatusAndDateRangeAsync(string status, DateTime startDate, DateTime endDate);
+
+    /// <summary>
+    /// 根据日期范围按日获取新增交换请求数量分组
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>日期和数量的字典</returns>
+    Task<Dictionary<DateTime, int>> GetDailyCountGroupedAsync(DateTime startDate, DateTime endDate);
+
+    /// <summary>
+    /// 根据日期范围按日获取指定状态交换请求数量分组
+    /// </summary>
+    /// <param name="status">状态</param>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>日期和数量的字典</returns>
+    Task<Dictionary<DateTime, int>> GetDailyCountByStatusGroupedAsync(string status, DateTime startDate, DateTime endDate);
 }

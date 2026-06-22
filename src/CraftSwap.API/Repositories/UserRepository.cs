@@ -62,6 +62,21 @@ public class UserRepository : Repository<User>, IUserRepository
     }
 
     /// <summary>
+    /// 根据日期范围按日获取用户注册数量分组
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>日期和数量的字典</returns>
+    public async Task<Dictionary<DateTime, int>> GetDailyCountGroupedAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _dbSet
+            .Where(u => u.CreatedAt >= startDate && u.CreatedAt < endDate)
+            .GroupBy(u => u.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Date, x => x.Count);
+    }
+
+    /// <summary>
     /// 分页查询用户列表（管理员用）
     /// </summary>
     /// <param name="parameters">查询参数</param>

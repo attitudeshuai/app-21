@@ -130,6 +130,58 @@ public static class AppConstants
     }
 
     /// <summary>
+    /// 统计缓存键
+    /// </summary>
+    public static class StatsCacheKeys
+    {
+        /// <summary>
+        /// 概览统计缓存键前缀
+        /// </summary>
+        public const string OverviewPrefix = "stats:overview";
+
+        /// <summary>
+        /// 趋势统计缓存键前缀
+        /// </summary>
+        public const string TrendPrefix = "stats:trend";
+
+        /// <summary>
+        /// 概览统计缓存过期时间（分钟）
+        /// </summary>
+        public const int OverviewExpirationMinutes = 5;
+
+        /// <summary>
+        /// 趋势统计缓存过期时间（分钟）
+        /// </summary>
+        public const int TrendExpirationMinutes = 10;
+    }
+
+    /// <summary>
+    /// 统计默认值
+    /// </summary>
+    public static class StatsDefaults
+    {
+        /// <summary>
+        /// 默认查询天数
+        /// </summary>
+        public const int DefaultQueryDays = 7;
+
+        /// <summary>
+        /// 最大查询天数（按日粒度）
+        /// </summary>
+        public const int MaxDailyQueryDays = 365;
+
+        /// <summary>
+        /// 最大查询周数（按周粒度）
+        /// </summary>
+        public const int MaxWeeklyQueryWeeks = 104;
+
+        /// <summary>
+        /// 最大查询月数（按月粒度）
+        /// </summary>
+        public const int MaxMonthlyQueryMonths = 36;
+    }
+
+    /// <summary>
     /// 系统事件类型
     /// </summary>
     public static class EventTypes

@@ -33,6 +33,7 @@ public static class ServiceCollectionExtensions
         services.AddFluentValidationConfig();
         services.AddSwaggerConfig();
         services.AddHttpContextAccessor();
+        services.AddMemoryCache();
         services.AddRepositories();
         services.AddServices();
         services.AddControllers();

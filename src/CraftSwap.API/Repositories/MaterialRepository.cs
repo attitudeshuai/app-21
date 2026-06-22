@@ -361,4 +361,19 @@ public class MaterialRepository : Repository<Material>, IMaterialRepository
     {
         return await _dbSet.CountAsync(m => m.CreatedAt >= startDate && m.CreatedAt < endDate);
     }
+
+    /// <summary>
+    /// 根据日期范围按日获取新增材料数量分组
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>日期和数量的字典</returns>
+    public async Task<Dictionary<DateTime, int>> GetDailyCountGroupedAsync(DateTime startDate, DateTime endDate)
+    {
+        return await _dbSet
+            .Where(m => m.CreatedAt >= startDate && m.CreatedAt < endDate)
+            .GroupBy(m => m.CreatedAt.Date)
+            .Select(g => new { Date = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Date, x => x.Count);
+    }
 }

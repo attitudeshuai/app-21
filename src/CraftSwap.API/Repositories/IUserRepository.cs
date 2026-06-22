@@ -38,6 +38,14 @@ public interface IUserRepository : IRepository<User>
     Task<int> GetCountByDateRangeAsync(DateTime startDate, DateTime endDate);
 
     /// <summary>
+    /// 根据日期范围按日获取用户注册数量分组
+    /// </summary>
+    /// <param name="startDate">开始日期</param>
+    /// <param name="endDate">结束日期</param>
+    /// <returns>日期和数量的字典</returns>
+    Task<Dictionary<DateTime, int>> GetDailyCountGroupedAsync(DateTime startDate, DateTime endDate);
+
+    /// <summary>
     /// 分页查询用户列表（管理员用）
     /// </summary>
     /// <param name="parameters">查询参数</param>
