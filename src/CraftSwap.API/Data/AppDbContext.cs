@@ -205,7 +205,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ProjectShowcase>(entity =>
         {
             entity.HasIndex(p => p.UserId);
+            entity.HasIndex(p => p.Category);
             entity.HasIndex(p => p.CreatedAt);
+            entity.HasIndex(p => p.ViewCount);
+            entity.HasIndex(p => p.LikeCount);
+            entity.HasIndex(p => p.FavoriteCount);
         });
     }
 
@@ -586,7 +590,13 @@ public class AppDbContext : DbContext
                 Description = "用红色羊毛线编织的围巾，温暖又时尚，适合冬天佩戴。针法采用了基础的平针，适合初学者学习。",
                 UsedMaterials = "红色羊毛线500克",
                 Photos = "https://example.com/projects/1.jpg",
-                CreatedAt = now.AddDays(7)
+                Category = "编织",
+                Tags = "围巾,羊毛,红色,冬季,手工",
+                ViewCount = 256,
+                LikeCount = 42,
+                FavoriteCount = 18,
+                CreatedAt = now.AddDays(7),
+                UpdatedAt = now.AddDays(7)
             },
             new ProjectShowcase
             {
@@ -596,7 +606,13 @@ public class AppDbContext : DbContext
                 Description = "用绿色丝绸制作的手工花束，色彩鲜艳，造型精美，可以作为家居装饰。",
                 UsedMaterials = "绿色丝绸2米",
                 Photos = "https://example.com/projects/2.jpg",
-                CreatedAt = now.AddDays(8)
+                Category = "布艺",
+                Tags = "丝绸,绿色,花束,装饰,手工",
+                ViewCount = 189,
+                LikeCount = 35,
+                FavoriteCount = 12,
+                CreatedAt = now.AddDays(8),
+                UpdatedAt = now.AddDays(8)
             },
             new ProjectShowcase
             {
@@ -606,7 +622,13 @@ public class AppDbContext : DbContext
                 Description = "用紫色蕾丝边装饰的棉麻小布袋，精致可爱，可以用来装小物件。",
                 UsedMaterials = "紫色蕾丝边2米，棉麻布1米",
                 Photos = "https://example.com/projects/3.jpg",
-                CreatedAt = now.AddDays(9)
+                Category = "布艺",
+                Tags = "蕾丝,紫色,布袋,装饰,手工",
+                ViewCount = 312,
+                LikeCount = 58,
+                FavoriteCount = 25,
+                CreatedAt = now.AddDays(9),
+                UpdatedAt = now.AddDays(9)
             }
         };
 

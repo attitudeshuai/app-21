@@ -21,6 +21,8 @@ public interface IProjectShowcaseRepository : IRepository<ProjectShowcase>
     /// <param name="pageSize">每页大小</param>
     /// <param name="userId">用户ID</param>
     /// <param name="searchKeyword">搜索关键词</param>
+    /// <param name="category">分类</param>
+    /// <param name="tag">标签</param>
     /// <param name="sortBy">排序字段</param>
     /// <param name="sortDirection">排序方向</param>
     /// <returns>分页后的作品列表和总数</returns>
@@ -29,6 +31,8 @@ public interface IProjectShowcaseRepository : IRepository<ProjectShowcase>
         int pageSize,
         int? userId = null,
         string? searchKeyword = null,
+        string? category = null,
+        string? tag = null,
         string? sortBy = null,
         string? sortDirection = null);
 

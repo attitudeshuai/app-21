@@ -45,6 +45,8 @@ public class ProjectShowcaseService : IProjectShowcaseService
             parameters.PageSize,
             parameters.UserId,
             parameters.SearchKeyword,
+            parameters.Category,
+            parameters.Tag,
             parameters.SortBy,
             parameters.SortDirection);
         var projectShowcaseResponses = _mapper.Map<List<ProjectShowcaseResponse>>(projectShowcases);
@@ -73,6 +75,9 @@ public class ProjectShowcaseService : IProjectShowcaseService
         {
             return ApiResponse<ProjectShowcaseResponse>.Fail("作品不存在", 404);
         }
+
+        projectShowcase.ViewCount += 1;
+        await _projectShowcaseRepository.UpdateAsync(projectShowcase);
 
         var projectShowcaseResponse = _mapper.Map<ProjectShowcaseResponse>(projectShowcase);
         return ApiResponse<ProjectShowcaseResponse>.Success(projectShowcaseResponse, "获取成功");
@@ -180,6 +185,8 @@ public class ProjectShowcaseService : IProjectShowcaseService
             parameters.PageSize,
             userId.Value,
             parameters.SearchKeyword,
+            parameters.Category,
+            parameters.Tag,
             parameters.SortBy,
             parameters.SortDirection);
         var projectShowcaseResponses = _mapper.Map<List<ProjectShowcaseResponse>>(projectShowcases);

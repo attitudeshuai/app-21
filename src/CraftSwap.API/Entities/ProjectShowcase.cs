@@ -48,10 +48,43 @@ public class ProjectShowcase
     public string? Photos { get; set; }
 
     /// <summary>
+    /// 作品分类
+    /// </summary>
+    [Required]
+    [MaxLength(50)]
+    public string Category { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 作品标签（逗号分隔存储）
+    /// </summary>
+    [MaxLength(500)]
+    public string? Tags { get; set; }
+
+    /// <summary>
+    /// 浏览数
+    /// </summary>
+    public int ViewCount { get; set; } = 0;
+
+    /// <summary>
+    /// 点赞数
+    /// </summary>
+    public int LikeCount { get; set; } = 0;
+
+    /// <summary>
+    /// 收藏数
+    /// </summary>
+    public int FavoriteCount { get; set; } = 0;
+
+    /// <summary>
     /// 创建时间
     /// </summary>
     [Required]
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// 更新时间
+    /// </summary>
+    public DateTime? UpdatedAt { get; set; }
 
     /// <summary>
     /// 发布作品的用户

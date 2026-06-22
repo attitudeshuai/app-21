@@ -185,26 +185,35 @@ public class MappingProfile : Profile
     {
         CreateMap<ProjectShowcase, ProjectShowcaseResponse>()
             .ForMember(dest => dest.ImageUrls, opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Photos) ? new List<string>() : src.Photos.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()))
-            .ForMember(dest => dest.Tags, opt => opt.Ignore())
+            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => string.IsNullOrEmpty(src.Tags) ? new List<string>() : src.Tags.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()))
             .ForMember(dest => dest.AuthorId, opt => opt.MapFrom(src => src.UserId.ToString()))
             .ForMember(dest => dest.AuthorUsername, opt => opt.MapFrom(src => src.User != null ? src.User.Username : string.Empty))
             .ForMember(dest => dest.AuthorAvatarUrl, opt => opt.MapFrom(src => src.User != null ? src.User.Avatar : null))
-            .ForMember(dest => dest.LikeCount, opt => opt.Ignore())
-            .ForMember(dest => dest.ViewCount, opt => opt.Ignore())
-            .ForMember(dest => dest.FavoriteCount, opt => opt.Ignore())
-            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.Category, opt => opt.Ignore());
+            .ForMember(dest => dest.LikeCount, opt => opt.MapFrom(src => src.LikeCount))
+            .ForMember(dest => dest.ViewCount, opt => opt.MapFrom(src => src.ViewCount))
+            .ForMember(dest => dest.FavoriteCount, opt => opt.MapFrom(src => src.FavoriteCount))
+            .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt))
+            .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category));
 
         CreateMap<CreateProjectShowcaseRequest, ProjectShowcase>()
             .ForMember(dest => dest.Photos, opt => opt.MapFrom(src => src.ImageUrls != null && src.ImageUrls.Count > 0 ? string.Join(',', src.ImageUrls) : null))
+            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Count > 0 ? string.Join(',', src.Tags) : null))
+            .ForMember(dest => dest.Category, opt => opt.MapFrom(src => src.Category))
+            .ForMember(dest => dest.ViewCount, opt => opt.MapFrom(src => 0))
+            .ForMember(dest => dest.LikeCount, opt => opt.MapFrom(src => 0))
+            .ForMember(dest => dest.FavoriteCount, opt => opt.MapFrom(src => 0))
             .ForMember(dest => dest.UserId, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.User, opt => opt.Ignore())
             .ForMember(dest => dest.UsedMaterials, opt => opt.Ignore());
 
         CreateMap<UpdateProjectShowcaseRequest, ProjectShowcase>()
             .ForMember(dest => dest.Photos, opt => opt.Condition(src => src.ImageUrls != null))
             .ForMember(dest => dest.Photos, opt => opt.MapFrom(src => src.ImageUrls != null && src.ImageUrls.Count > 0 ? string.Join(',', src.ImageUrls) : null))
+            .ForMember(dest => dest.Tags, opt => opt.Condition(src => src.Tags != null))
+            .ForMember(dest => dest.Tags, opt => opt.MapFrom(src => src.Tags != null && src.Tags.Count > 0 ? string.Join(',', src.Tags) : null))
+            .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
             .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
     }
 }
